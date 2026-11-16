@@ -57,6 +57,10 @@
     <canvas id="film"></canvas>
     <div class="stage__scrim" id="scrim"></div>
     <div class="stage__vignette"></div>
+    <div class="stage__tag" id="stageTag" data-side="L">
+      <span class="ptag__logo"><img src="./brand/f1-autofilms.webp" alt="F1 Auto Films" width="112" height="54" /></span>
+      <span class="ptag__txt"><small>Film shown</small><b id="stageTagName">Apex Ultra · PCU</b></span>
+    </div>
   </div>
 
   <!-- ============ HEADER ============ -->
@@ -108,6 +112,7 @@
             <a class="btn btn--ghost" href="#ppf">Watch it protect <span aria-hidden="true">↓</span></a>
           </div>
           <div class="badge-f1">
+            <span class="badge-f1__logo"><img src="./brand/f1-autofilms.webp" alt="F1 Auto Films" width="88" height="42" /></span>
             <span class="badge-f1__tag">Official Distributor</span>
             <span class="badge-f1__name">F1 Auto Films <b>·</b> Central Luzon</span>
           </div>
@@ -120,11 +125,11 @@
       </section>
 
       <!-- 01 PPF -->
-      <section class="step step--tall" id="ppf" data-step="film" data-chapter="ppf">
+      <section class="step step--tall" id="ppf" data-step="film" data-product="Apex Ultra · PCU paint protection film" data-chapter="ppf">
         <div class="panel panel--left">
           <p class="chapter mono">01 — Paint Protection Film</p>
           <h2 class="title">A second skin of polycarbonate armor.</h2>
-          <p>F1 Apex Ultra is built on aliphatic PCU, the newest chemistry in paint protection. Our technicians lay it by hand over every panel. Keep scrolling to wrap the car.</p>
+          <p>F1 Apex Ultra is built on aliphatic PCU, the newest chemistry in paint protection. Our technicians lay it by hand over every panel. Keep scrolling to wrap the whole car and watch the gloss go past 100 GU.</p>
           <div class="film-meter" aria-hidden="true">
             <div class="film-meter__track"><i id="filmBar"></i></div>
             <span class="mono"><b id="filmPct">0</b>% wrapped</span>
@@ -137,10 +142,10 @@
         </div>
       </section>
 
-      <section class="step" data-step="impact" data-chapter="ppf">
+      <section class="step" data-step="impact" data-product="Apex Ultra · PCU" data-chapter="ppf">
         <div class="panel panel--right">
           <p class="chapter mono">01 — Impact</p>
-          <h2 class="title">Stone meets film. Film wins.</h2>
+          <h2 class="title">Strong impact-resistant PPF.</h2>
           <p>At 23.33 MPa tensile strength, Apex Ultra is 46% tougher than the benchmark. High-speed gravel deflects off the film instead of chipping your paint.</p>
           <ul class="stats">
             <li><b>23.33</b><span>MPa tensile</span></li>
@@ -150,7 +155,7 @@
         </div>
       </section>
 
-      <section class="step" data-step="heal" data-chapter="ppf">
+      <section class="step" data-step="heal" data-product="Apex Ultra · self-healing top coat" data-chapter="ppf">
         <div class="panel panel--left">
           <p class="chapter mono">01 — Self-healing</p>
           <h2 class="title">Scratches that erase themselves.</h2>
@@ -179,7 +184,7 @@
       </section>
 
       <!-- 02 CERAMIC -->
-      <section class="step" id="ceramic" data-step="rain" data-chapter="ceramic">
+      <section class="step" id="ceramic" data-step="rain" data-product="Apex Ultra · built-in ceramic top coat" data-chapter="ceramic">
         <div class="panel panel--right">
           <p class="chapter mono">02 — Built-in Ceramic Top Coat</p>
           <h2 class="title">Rain beads. Dirt slides. Shine stays.</h2>
@@ -187,7 +192,7 @@
         </div>
       </section>
 
-      <section class="step" data-step="monsoon" data-chapter="ceramic">
+      <section class="step" data-step="monsoon" data-product="Apex Ultra · built-in ceramic top coat" data-chapter="ceramic">
         <div class="panel panel--left">
           <p class="chapter mono">02 — Made for Philippine weather</p>
           <h2 class="title">Built for monsoon, sun and everything between.</h2>
@@ -201,7 +206,7 @@
       </section>
 
       <!-- 03 FINISH STUDIO -->
-      <section class="step step--tall" id="finish" data-step="studio" data-chapter="finish">
+      <section class="step step--tall" id="finish" data-step="studio" data-product="studio" data-chapter="finish">
         <div class="panel panel--left panel--studio">
           <p class="chapter mono">03 — Finish Studio</p>
           <h2 class="title">Change the look. Keep the paint.</h2>
@@ -214,7 +219,7 @@
       </section>
 
       <!-- 04 TINT -->
-      <section class="step step--tall" id="tint" data-step="tint" data-chapter="tint">
+      <section class="step step--tall" id="tint" data-step="tint" data-product="Nitro · 9-layer nano ceramic tint" data-chapter="tint">
         <div class="panel panel--right panel--tint">
           <p class="chapter mono">04 — Nano Ceramic Tint</p>
           <h2 class="title">Nine layers between you and a 60° cabin.</h2>
@@ -250,7 +255,7 @@
       </section>
 
       <!-- 05 THERMOSHIELD X -->
-      <section class="step" id="thermo" data-step="stones" data-chapter="thermo">
+      <section class="step" id="thermo" data-step="stones" data-product="Thermoshield X · exterior glass armor" data-chapter="thermo">
         <div class="panel panel--left">
           <p class="chapter mono">05 — Thermoshield X · Glass Armor</p>
           <h2 class="title">Stone chips stop here.</h2>
@@ -263,7 +268,7 @@
         </div>
       </section>
 
-      <section class="step" data-step="roof" data-chapter="thermo">
+      <section class="step" data-step="roof" data-product="Thermoshield X · exterior glass armor" data-chapter="thermo">
         <div class="panel panel--right">
           <p class="chapter mono">05 — Panoramic roof</p>
           <h2 class="title">From above? Also covered.</h2>
@@ -271,7 +276,7 @@
         </div>
       </section>
 
-      <section class="step" data-step="heat" data-chapter="thermo">
+      <section class="step" data-step="heat" data-product="Thermoshield X · exterior glass armor" data-chapter="thermo">
         <div class="panel panel--left">
           <p class="chapter mono">05 — Heat rejection</p>
           <h2 class="title">98% of infrared heat never gets in.</h2>
@@ -311,7 +316,7 @@
         </div>
       </section>
 
-      <section class="step" data-step="smash" data-chapter="thermo">
+      <section class="step" data-step="smash" data-product="Thermoshield X · exterior glass armor" data-chapter="thermo">
         <div class="panel panel--left">
           <p class="chapter mono">05 — Anti-theft</p>
           <h2 class="title">Smash-and-grab, delayed.</h2>
@@ -412,7 +417,8 @@
               <a class="btn btn--ghost" href="tel:+639985640802">Call 0998 564 0802</a>
             </div>
             <div class="badge-f1 badge-f1--inline">
-              <span class="badge-f1__tag">Official Distributor</span>
+              <span class="badge-f1__logo"><img src="./brand/f1-autofilms.webp" alt="F1 Auto Films" width="88" height="42" /></span>
+            <span class="badge-f1__tag">Official Distributor</span>
               <span class="badge-f1__name">F1 Auto Films <b>·</b> Central Luzon</span>
             </div>
           </div>

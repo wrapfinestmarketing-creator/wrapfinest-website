@@ -46,6 +46,7 @@ document.addEventListener('click', e => {
 /* ---------------- story + film ---------------- */
 const story = createStory($('#story'));
 const stageEl = $('#stage'), scrim = $('#scrim'), nav = $('#nav'), rail = $('#rail');
+const stageTag = $('#stageTag'), stageTagName = $('#stageTagName');
 const ui = { filmBar: $('#filmBar'), filmPct: $('#filmPct'), healBar: $('#healBar'), healTxt: $('#healTxt'), layers: $('#layers') };
 let lastChapter = '', lastIndex = -1;
 // which media the next step needs, so it is already loading before the visitor gets there
@@ -58,6 +59,11 @@ function onScroll() {
   film?.set(sc); film?.setHidden(sc.dim > 0.985);
   stageEl.style.setProperty('--dim', sc.dim.toFixed(3));
   scrim.dataset.side = s.active && sc.dim < 0.5 ? sc.side : 'C';
+  let prod = s.step.el.dataset.product || '';
+  if (prod === 'studio') prod = sel.finish.f1 ? sel.finish.f1 : '';
+  const tagOn = !!prod && s.active && sc.dim < 0.5 && !s.past;
+  stageTag.classList.toggle('is-on', tagOn);
+  if (tagOn) { if (stageTagName.textContent !== prod) stageTagName.textContent = prod; stageTag.dataset.side = sc.side === 'R' ? 'R' : 'L'; }
   nav.classList.toggle('is-solid', y > 40);
   rail.classList.toggle('is-off', s.past || sc.dim > 0.95);
   if (s.index !== lastIndex) { lastIndex = s.index; const nx = story.steps[s.index + 1], nn = story.steps[s.index + 2]; film?.preload([...(nx ? NEEDS[nx.key] : []), ...(nn ? NEEDS[nn.key] : [])]); }

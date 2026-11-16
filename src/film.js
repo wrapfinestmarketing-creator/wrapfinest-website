@@ -50,9 +50,10 @@ export function createFilm({ canvas, base, manifest, reducedMotion }) {
   function place(img) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     if (isMobile) {                                              // picture band at the top, text below
-      const vis = 0.6 / cur.zoom, s = W / (iw * vis), h = ih * s, top = 58 * dpr;
-      const x = clamp(W / 2 - cur.fx * iw * s, W - iw * s, 0);
-      return { x, y: top, w: iw * s, h, band: top + h };
+      const top = 58 * dpr, bandH = Math.min(W * 1.02, H * 0.56), vis = 0.6 / cur.zoom;
+      const s = Math.max(W / (iw * vis), bandH / ih), w = iw * s, h = ih * s;
+      const x = clamp(W / 2 - cur.fx * w, W - w, 0), y = clamp(top + bandH / 2 - cur.fy * h, top + bandH - h, top);
+      return { x, y, w, h, band: top + bandH, clip: [0, top, W, bandH] };
     }
     const s = Math.max(W / iw, H / ih) * cur.zoom, w = iw * s, h = ih * s;
     // the picture may slide past the screen edge on the text side; that edge is faded to black
@@ -67,7 +68,7 @@ export function createFilm({ canvas, base, manifest, reducedMotion }) {
     for (const L of target.layers) {
       const img = L.seq ? frameOf(L.seq, cur.t[L.seq] ?? L.t) : stills[L.still]?.img; if (!img) continue;
       const a = L.still ? (cur.alpha[L.still] ?? L.alpha ?? 1) : 1; if (a <= 0.003) continue;
-      const r = place(img); ctx.globalAlpha = drew ? a : 1; ctx.drawImage(img, r.x, r.y, r.w, r.h); band = r.band; drew = true; edge = r;
+      const r = place(img); ctx.globalAlpha = drew ? a : 1; if (r.clip) { ctx.save(); ctx.beginPath(); ctx.rect(...r.clip); ctx.clip(); } ctx.drawImage(img, r.x, r.y, r.w, r.h); if (r.clip) ctx.restore(); band = r.band; drew = true; edge = r;
     }
     ctx.globalAlpha = 1;
     if (!isMobile && edge) {

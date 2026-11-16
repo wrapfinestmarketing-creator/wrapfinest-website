@@ -14,11 +14,11 @@ export const TINTS = [
 
 // Finish Studio: every option is a photo-real still of the same car in the same bay.
 export const FINISHES = [
-  { id: 'gloss', still: 'finish-gloss', label: 'Ultra Gloss', product: 'F1 Apex Ultra · PCU', service: 'Paint protection film',
+  { id: 'gloss', still: 'finish-gloss', f1: 'Apex Ultra · PCU ultra gloss', label: 'Ultra Gloss', product: 'F1 Apex Ultra · PCU', service: 'Paint protection film',
     blurb: 'Clear PCU film over your factory color. Mirror gloss above 100 GU, 12-year warranty.' },
-  { id: 'satin', still: 'finish-satin', label: 'Satin', product: 'F1 Apex Satin', service: 'Paint protection film',
+  { id: 'satin', still: 'finish-satin', f1: 'Apex Satin · satin PPF', label: 'Satin', product: 'F1 Apex Satin', service: 'Paint protection film',
     blurb: 'Turns gloss paint into a smooth satin finish while protecting it. 8-year warranty.' },
-  { id: 'onyx', still: 'finish-onyx', label: 'Gloss Black', product: 'F1 Onyx', service: 'Paint protection film',
+  { id: 'onyx', still: 'finish-onyx', f1: 'Onyx · gloss black PPF', label: 'Gloss Black', product: 'F1 Onyx', service: 'Paint protection film',
     blurb: 'Deep gloss-black protection film with the same gloss and anti-yellowing as Apex. 10-year warranty.' },
   { id: 'color', label: 'Color Change', product: 'HyperPro UltraShield · KK Vinyl USA', service: 'Color change wrap', swatches: true,
     blurb: 'A new color with real protection underneath. Sample shades shown; see the full swatch books in the studio.' },
