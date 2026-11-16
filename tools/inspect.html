@@ -1,0 +1,32 @@
+<!doctype html><html><body style="margin:0;background:#888">
+<canvas id="c" width="1600" height="900"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+const q = new URLSearchParams(location.search);
+const r = new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true,preserveDrawingBuffer:true});
+r.setSize(1600,900,false); r.toneMapping=THREE.ACESFilmicToneMapping;
+const scene=new THREE.Scene(); scene.background=new THREE.Color(q.get('bg')||'#8a8a8a');
+scene.environment=new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(),0.04).texture;
+let maskTex=null; try{ maskTex=await new THREE.TextureLoader().loadAsync('/models/car-mask.webp'); maskTex.flipY=false; maskTex.colorSpace=THREE.NoColorSpace;}catch(e){}
+const L=new GLTFLoader(); L.setMeshoptDecoder(MeshoptDecoder); L.load('/models/'+q.get('m'), g=>{
+  const o=g.scene; scene.add(o);
+  const box=new THREE.Box3().setFromObject(o), c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3());
+  const mode=q.get('mode')||'tex';
+  o.traverse(m=>{ if(m.isMesh){ window.__mat=m.material; if(mode==='clay'){m.material=new THREE.MeshStandardMaterial({color:0x999999,roughness:.45,metalness:.1});} if(mode==='mask'){m.material=new THREE.MeshBasicMaterial({map:maskTex});} if(mode==='base'){m.material=new THREE.MeshBasicMaterial({map:m.material.map});} }});
+  const views=(q.get('views')||'35,20;-35,20;145,25;90,5;0,5;0,85').split(';').map(v=>v.split(',').map(Number));
+  const cols=3, rows=Math.ceil(views.length/cols), W=1600/cols, H=900/rows;
+  r.setScissorTest(true);
+  const d=Number(q.get('d')||1.25)*Math.max(s.x,s.y,s.z);
+  views.forEach(([az,el],i)=>{
+    const cam=new THREE.PerspectiveCamera(32,W/H,0.01,100);
+    const a=az*Math.PI/180,e=el*Math.PI/180;
+    cam.position.set(c.x+d*Math.sin(a)*Math.cos(e), c.y+d*Math.sin(e), c.z+d*Math.cos(a)*Math.cos(e)); cam.lookAt(c);
+    const x=(i%cols)*W, y=900-(Math.floor(i/cols)+1)*H;
+    r.setViewport(x,y,W,H); r.setScissor(x,y,W,H); r.render(scene,cam);
+  });
+  window.__done=true; document.title='done';
+});
+</script></body></html>
