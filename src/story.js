@@ -8,7 +8,7 @@ const S = (key, layers, o = {}) => ({ key, layers, side: 'L', fx: 0.5, fy: 0.55,
 
 export const KEYS = {
   hero: (p, c) => S('hero', [{ seq: 'hero', t: clamp01((p - 0.5) * 2) * 0.92 + c.idle }], { side: 'L', fx: 0.5, fy: 0.55, zoom: 1.02, over: 0.17 }),
-  film: p => S('ppf', [{ seq: 'ppf', t: clamp01((p - 0.06) / 0.8) }], { side: 'L', fx: 0.56, fy: 0.6, meter: clamp01((p - 0.06) / 0.8) }),
+  film: p => S('ppf', [{ seq: 'ppf', t: clamp01((p - 0.06) / 0.8) }], { side: 'L', fx: 0.5, fy: 0.6, zoom: 1.12, meter: clamp01((p - 0.06) / 0.8) }),
   impact: p => S('impact', [{ seq: 'impact', t: clamp01(p * 1.05) }], { side: 'R', fx: 0.5, fy: 0.6 }),
   heal: p => S('heal', [{ seq: 'heal', t: smooth(0.12, 0.85, p) }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.08, mzoom: 1.5, mfx: 0.62, heal: smooth(0.12, 0.85, p) }),
   pcu: p => S('outro', [{ seq: 'outro', t: p * 0.35 }], { side: 'C', dim: 0.8 }),
