@@ -17,14 +17,14 @@ const prim = node.getMesh().listPrimitives()[0];
 const mat = prim.getMaterial();
 
 // ---------- geometry: bake orientation, stretch to Model Y L proportions ----------
-const S = 3.92; // model units -> metres
+const S = 3.897, XS = 0.95; // model units -> metres, width correction
 // stretch factor along length (model units, +z = front)
 const zones = [ // [z0, z1, k]
-  [-9, -0.474, 1.06],   // rear overhang
-  [-0.474, -0.224, 1.0],// rear wheel + arch
-  [-0.224, 0.209, 1.21],// cabin (long wheelbase)
-  [0.209, 0.459, 1.0],  // front wheel + arch
-  [0.459, 9, 1.0],      // front overhang
+  [-9, -0.479, 1.2],    // rear overhang
+  [-0.479, -0.229, 1.0],// rear wheel + arch
+  [-0.229, 0.208, 1.213],// cabin (long wheelbase)
+  [0.208, 0.458, 1.0],  // front wheel + arch
+  [0.458, 9, 1.12],     // front overhang
 ];
 const BL = 0.03;
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -39,18 +39,18 @@ let zmin = 1e9, zmax = -1e9, xmin = 1e9, xmax = -1e9;
 for (let i = 0; i < cnt; i++) {
   const x = pa[3 * i], y = -pa[3 * i + 2], z = pa[3 * i + 1];          // bake +90deg X rotation
   let nx = na[3 * i], ny = -na[3 * i + 2], nz = na[3 * i + 1];
-  const kk = k(z); nz /= kk; const l = Math.hypot(nx, ny, nz) || 1;
+  const kk = k(z); nz /= kk; nx /= XS; const l = Math.hypot(nx, ny, nz) || 1;
   const Zs = mapZ(z) * S;
-  pa[3 * i] = x * S; pa[3 * i + 1] = y * S; pa[3 * i + 2] = Zs;
+  pa[3 * i] = x * S * XS; pa[3 * i + 1] = y * S; pa[3 * i + 2] = Zs;
   na[3 * i] = nx / l; na[3 * i + 1] = ny / l; na[3 * i + 2] = nz / l;
-  zmin = Math.min(zmin, Zs); zmax = Math.max(zmax, Zs); xmin = Math.min(xmin, x * S); xmax = Math.max(xmax, x * S);
+  zmin = Math.min(zmin, Zs); zmax = Math.max(zmax, Zs); xmin = Math.min(xmin, x * S * XS); xmax = Math.max(xmax, x * S * XS);
 }
 const zc = (zmin + zmax) / 2, xc = (xmin + xmax) / 2;
 for (let i = 0; i < cnt; i++) { pa[3 * i] -= xc; pa[3 * i + 2] -= zc; }
 P.setArray(pa); Nn.setArray(na);
 node.setRotation([0, 0, 0, 1]).setTranslation([0, 0, 0]).setScale([1, 1, 1]);
 const wz = z => +(mapZ(z) * S - zc).toFixed(3);
-const info = { length: +(zmax - zmin).toFixed(3), width: +(xmax - xmin).toFixed(3), height: +(0.431 * S).toFixed(3), rearAxleZ: wz(-0.349), frontAxleZ: wz(0.334), wheelR: +(0.092 * S).toFixed(3) };
+const info = { length: +(zmax - zmin).toFixed(3), width: +(xmax - xmin).toFixed(3), height: +(0.428 * S).toFixed(3), rearAxleZ: wz(-0.354), frontAxleZ: wz(0.333), wheelR: +(0.09 * S).toFixed(3) };
 
 // ---------- textures: mask (R body, G glass, B lights), compact base + normal ----------
 const tex = {}; for (const t of root.listTextures()) { const n = t.getName(); tex[n.includes('normal') ? 'normal' : n.includes('rough') ? 'orm' : 'base'] = t; }
@@ -68,6 +68,18 @@ for (let i = 0; i < SZ * SZ; i++) {
   const light = Math.min(1, Math.max(0, (mx - 0.62) / 0.2)) * Math.min(1, Math.max(0, (0.5 - sat) / 0.25));
   mask[3 * i] = body * 255; mask[3 * i + 1] = glass * 255; mask[3 * i + 2] = light * 255;
   cb += body; cg += glass; cl += light;
+}
+{ // roof-zone repair (UV-space triangle fill)
+  const uvA = prim.getAttribute('TEXCOORD_0').getArray(), ix = prim.getIndices().getArray();
+  const inZone = i => { const x = pa[3*i], y = pa[3*i+1], z = pa[3*i+2]; return Math.abs(x) < 0.75 && y > 1.4 && na[3*i+1] > 0.55 && z > -1.75 && z < 0.75; };
+  let fixed = 0;
+  for (let f = 0; f < ix.length; f += 3) { const a = ix[f], b = ix[f+1], c = ix[f+2]; if (!(inZone(a) && inZone(b) && inZone(c))) continue;
+    const ax = uvA[2*a]*SZ, ay = uvA[2*a+1]*SZ, bx = uvA[2*b]*SZ, by = uvA[2*b+1]*SZ, cx = uvA[2*c]*SZ, cy = uvA[2*c+1]*SZ;
+    const x0 = Math.max(0, Math.floor(Math.min(ax, bx, cx)) - 1), x1 = Math.min(SZ-1, Math.ceil(Math.max(ax, bx, cx)) + 1), y0 = Math.max(0, Math.floor(Math.min(ay, by, cy)) - 1), y1 = Math.min(SZ-1, Math.ceil(Math.max(ay, by, cy)) + 1);
+    const den = (by-cy)*(ax-cx) + (cx-bx)*(ay-cy); if (Math.abs(den) < 1e-9) continue;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const w0 = ((by-cy)*(x+0.5-cx) + (cx-bx)*(y+0.5-cy))/den, w1 = ((cy-ay)*(x+0.5-cx) + (ax-cx)*(y+0.5-cy))/den, w2 = 1-w0-w1;
+      if (w0 >= -0.6 && w1 >= -0.6 && w2 >= -0.6) { const o = (y*SZ+x)*3; if (mask[o] > 40 || mask[o+1] < 200) fixed++; mask[o] = 0; mask[o+1] = 255; mask[o+2] = 0; } } }
+  info.roofFixedPx = fixed;
 }
 info.maskCoverage = { body: +(cb / SZ / SZ).toFixed(3), glass: +(cg / SZ / SZ).toFixed(3), lights: +(cl / SZ / SZ).toFixed(4) };
 fs.mkdirSync(OUT, { recursive: true });
@@ -145,10 +157,10 @@ await doc.transform(dedup(), weld(), simplify({ simplifier: MeshoptSimplifier, r
     for (let i = 0; i < vc; i++) { const g2 = gid[i]; g0[3*g2] += nn[3*i]; g0[3*g2+1] += nn[3*i+1]; g0[3*g2+2] += nn[3*i+2]; cnt2[g2]++; }
     for (let g2 = 0; g2 < ng; g2++) { const l = Math.hypot(g0[3*g2], g0[3*g2+1], g0[3*g2+2]) || 1; g0[3*g2] /= l; g0[3*g2+1] /= l; g0[3*g2+2] /= l; }
     let cur = g0, nxt = new Float64Array(ng * 3);
-    const ITER = +(process.env.NSMOOTH || 14);
+    const ITER = +(process.env.NSMOOTH || 4);
     for (let it = 0; it < ITER; it++) {
       for (let g2 = 0; g2 < ng; g2++) { const ax = cur[3*g2], ay = cur[3*g2+1], az = cur[3*g2+2]; let x = ax, y = ay, z = az;
-        for (const o of nb[g2]) { const d = ax*cur[3*o] + ay*cur[3*o+1] + az*cur[3*o+2]; if (d > 0.82) { const w = d * d; x += cur[3*o]*w; y += cur[3*o+1]*w; z += cur[3*o+2]*w; } }
+        for (const o of nb[g2]) { const d = ax*cur[3*o] + ay*cur[3*o+1] + az*cur[3*o+2]; if (d > 0.955) { const w = d * d; x += cur[3*o]*w; y += cur[3*o+1]*w; z += cur[3*o+2]*w; } }
         const l = Math.hypot(x, y, z) || 1; nxt[3*g2] = x/l; nxt[3*g2+1] = y/l; nxt[3*g2+2] = z/l; }
       const t2 = cur; cur = nxt; nxt = t2 === g0 ? new Float64Array(ng * 3) : t2;
     }
@@ -161,5 +173,5 @@ doc.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({
 await io.write(`${OUT}/model-yl.glb`, doc);
 info.tris = root.listMeshes()[0].listPrimitives()[0].getIndices().getCount() / 3;
 info.bytes = { glb: fs.statSync(`${OUT}/model-yl.glb`).size, mask: fs.statSync(`${OUT}/car-mask.webp`).size };
-fs.writeFileSync('/home/user/wrapfinest-website/src-car-info.json', JSON.stringify(info, null, 1));
+fs.writeFileSync('/home/user/wrapfinest-website/src/car-info.json', JSON.stringify(info, null, 1));
 console.log(JSON.stringify(info, null, 1));

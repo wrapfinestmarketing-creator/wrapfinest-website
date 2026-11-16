@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js';
 import { HEX_GLSL } from './studio.js';
+import INFO from '../car-info.json';
 
 // Convert quantized/normalized attributes to plain floats and bake the node transform,
 // so shaders can use object-space metres directly.
@@ -35,6 +36,8 @@ export function makeCarUniforms(mask) {
     uImpCol: { value: new THREE.Color(1.0, 0.55, 0.3) },
     uScr: { value: new THREE.Vector4(1, 0.8, 0.3, 0) },
     uCrk: { value: new THREE.Vector4(1, 1.25, -0.5, 0) },
+    uTail: { value: 1.06 },
+    uAxle: { value: new THREE.Vector3(INFO.frontAxleZ, INFO.rearAxleZ, INFO.wheelR) },
   };
 }
 
@@ -52,14 +55,14 @@ function carMaterial(orig, uniforms) {
       .replace('#include <common>', /* glsl */ `#include <common>
         uniform sampler2D tMask; uniform vec3 uColA; uniform vec3 uColB; uniform vec4 uPrmA; uniform vec4 uPrmB;
         uniform float uWipe, uFilm, uTint, uThermo, uHeat, uTime, uLights;
-        uniform vec4 uImp[3]; uniform vec3 uImpCol; uniform vec4 uScr; uniform vec4 uCrk;
+        uniform vec4 uImp[3]; uniform vec3 uImpCol; uniform vec4 uScr; uniform vec4 uCrk; uniform vec3 uAxle; uniform float uTail;
         varying vec3 vObj; varying vec3 vObjN;
         float wfBody, wfGlass, wfLamp, wfCC, wfCCR, wfRough, wfMetal, wfScratch; vec3 wfEmis;
         ${HEX_GLSL}`)
       .replace('#include <map_fragment>', /* glsl */ `#include <map_fragment>
         {
           vec3 mk = texture2D(tMask, vMapUv).rgb;
-          wfBody = mk.r; wfGlass = mk.g; wfLamp = mk.b; wfEmis = vec3(0.0);
+          wfBody = mk.r; wfGlass = mk.g * smoothstep(0.8, 0.9, vObj.y); wfLamp = mk.b; wfEmis = vec3(0.0);
           float wv = sin(vObj.y * 5.0 + vObj.x * 3.0) * 0.06;
           float zz = vObj.z + wv;
           // finish wipe, nose to tail
@@ -77,6 +80,13 @@ function carMaterial(orig, uniforms) {
           float wheel = smoothstep(0.07, 0.2, lum) * (1.0 - wfLamp);
           vec3 other = diffuseColor.rgb * 0.4;
           wfRough = mix(0.75, 0.42, wheel); wfMetal = mix(0.0, 0.35, wheel);
+          { // gloss-black alloy wheels
+            float wz = abs(vObj.z - uAxle.x) < abs(vObj.z - uAxle.y) ? uAxle.x : uAxle.y;
+            float wr = length(vec2(vObj.z - wz, vObj.y - uAxle.z)) / uAxle.z;
+            float rim = smoothstep(0.74, 0.68, wr) * step(0.62, abs(vObj.x));
+            other = mix(other, mix(vec3(0.012), vec3(0.09), smoothstep(0.03, 0.25, lum)), rim);
+            wfRough = mix(wfRough, 0.22, rim); wfMetal = mix(wfMetal, 0.85, rim);
+          }
           wfCC = 0.0; wfCCR = 0.2;
 
           // --- painted body
@@ -141,6 +151,7 @@ function carMaterial(orig, uniforms) {
           wfEmis += topGlass * uHeat * mix(hot * 1.5, cool, uThermo) * smoothstep(0.25, 0.9, vObjN.y);
 
           // --- lamps + film / finish edges
+          wfEmis += vec3(1.0, 0.04, 0.02) * 2.4 * uLights * mk.g * step(vObj.z, -2.0) * smoothstep(0.035, 0.0, abs(vObj.y - uTail)) * (1.0 - wfBody);
           wfEmis += wfLamp * uLights * (vObj.z > 0.0 ? vec3(1.0, 0.97, 0.92) * 3.2 : vec3(1.0, 0.05, 0.02) * 3.0);
           wfEmis += vec3(1.0, 0.3, 0.08) * edgeF * 2.6 * max(wfBody, wfLamp);
           wfEmis += vec3(1.0, 0.95, 0.9) * edgeW * 1.4 * wfBody;
@@ -151,7 +162,7 @@ function carMaterial(orig, uniforms) {
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += wfEmis;')
       .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\nmaterial.clearcoat = saturate(wfCC); material.clearcoatRoughness = clamp(wfCCR, 0.02, 1.0);');
   };
-  mat.customProgramCacheKey = () => 'wf-car-v1';
+  mat.customProgramCacheKey = () => 'wf-car-v2';
   return mat;
 }
 
