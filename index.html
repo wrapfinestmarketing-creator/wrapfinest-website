@@ -54,7 +54,8 @@
 
   <!-- ============ 3D STAGE ============ -->
   <div class="stage" id="stage" aria-hidden="true">
-    <canvas id="gl"></canvas>
+    <canvas id="film"></canvas>
+    <div class="stage__scrim" id="scrim"></div>
     <div class="stage__vignette"></div>
   </div>
 
@@ -204,13 +205,12 @@
         <div class="panel panel--left panel--studio">
           <p class="chapter mono">03 — Finish Studio</p>
           <h2 class="title">Change the look. Keep the paint.</h2>
-          <p class="studio__blurb" id="finishBlurb">Pick a finish and see it on the car. Drag the car to turn it.</p>
+          <p class="studio__blurb" id="finishBlurb">Pick a finish and see it on the car.</p>
           <div class="chips" id="finishChips" role="radiogroup" aria-label="Finish"></div>
           <div class="swatches" id="swatches" role="radiogroup" aria-label="Sample colors" hidden></div>
           <p class="studio__product mono" id="finishProduct">F1 Apex Ultra · PCU</p>
           <a class="btn btn--primary" href="#quote" id="quoteFinish">Quote this finish</a>
         </div>
-        <div class="drag-hint mono" aria-hidden="true">⟲ Drag to rotate</div>
       </section>
 
       <!-- 04 TINT -->
@@ -276,6 +276,7 @@
           <p class="chapter mono">05 — Heat rejection</p>
           <h2 class="title">98% of infrared heat never gets in.</h2>
           <p>Ordinary tint sits inside, so the glass soaks up heat first and radiates it into the cabin. Thermoshield X reflects it on the outside surface. Cooler cabin, less A/C load, more EV range.</p>
+          <p class="fine mono">Thermal-camera illustration</p>
           <div class="toggle" id="thermoToggle" role="group" aria-label="Thermoshield X">
             <button type="button" data-on="0">Bare glass</button>
             <button type="button" data-on="1" class="is-on">Thermoshield X</button>
@@ -478,7 +479,7 @@
     </div>
     <div class="wrap footer__fine mono">
       <span>© <span id="year">2026</span> WrapFinest. All rights reserved.</span>
-      <span>Vehicle shown for demonstration. WrapFinest is an independent shop and is not affiliated with any vehicle manufacturer. Product specifications from F1 Auto Films.</span>
+      <span>Vehicle and demonstration footage are computer-generated illustrations of how the products work. WrapFinest is an independent shop and is not affiliated with any vehicle manufacturer. Product specifications from F1 Auto Films.</span>
     </div>
   </footer>
 

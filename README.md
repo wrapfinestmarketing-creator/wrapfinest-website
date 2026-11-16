@@ -1,11 +1,12 @@
 # WrapFinest website
 
-Scroll-driven 3D site for WrapFinest (Bacolor, Pampanga): paint protection film, wraps, nano ceramic tint, Thermoshield X glass armor.
+Scroll-driven cinematic site for WrapFinest (Bacolor, Pampanga): paint protection film, wraps, nano ceramic tint, Thermoshield X glass armor.
 
 - `docs/CREATIVE-BRIEF.md` — approved brief and the only facts the site may claim
-- `src/` — page logic (`main.js`, `story.js`, `data.js`) and the WebGL stage (`gl/`)
-- `public/` — 3D model, photos, videos, logos
-- `tools/` — offline pipeline for the car model and screenshot checks
+- `src/` — page logic (`main.js`, `story.js`, `data.js`) and the scroll film player (`film.js`)
+- `public/film/` — frame sequences and stills that play as the visitor scrolls
+- `public/media/`, `public/brand/` — real photos, videos, logos
+- `tools/build-film.sh` — turns source clips and stills into web frames; `tools/snap.cjs` — screenshot checks
 
 ## Develop
 

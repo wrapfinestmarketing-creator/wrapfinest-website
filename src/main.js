@@ -1,7 +1,9 @@
 import './styles.css';
 import Lenis from 'lenis';
-import { TINTS, FINISHES, SWATCHES, FACTORY, TINT_LAYERS, CONTACT } from './data.js';
+import { TINTS, FINISHES, SWATCHES, TINT_LAYERS, CONTACT } from './data.js';
 import { createStory } from './story.js';
+import { createFilm } from './film.js';
+import manifest from './film-manifest.json';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -10,8 +12,9 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isMobile = () => matchMedia('(max-width: 760px)').matches;
 const params = new URLSearchParams(location.search);
 
-const ctx = { thermoUser: 1, get mobile() { return isMobile(); } };
-let stage = null;
+// live state the story reads on every scroll tick
+const ctx = { thermo: 1, tint: 0.64, finish: 'finish-gloss', idle: 0, get mobile() { return isMobile(); } };
+let film = null;
 
 /* ---------------- preloader ---------------- */
 const pre = { bar: $('#preloaderBar'), pct: $('#preloaderPct'), fill: $('#preloaderFill'), hex: $('.preloader__hex') };
@@ -22,13 +25,13 @@ function setProgress(p) {
 }
 function ready() {
   setProgress(1);
-  setTimeout(() => { document.body.classList.remove('is-loading'); document.body.classList.add('is-ready'); stage?.setLit(1); lenis?.start(); onScroll(); }, 350);
+  setTimeout(() => { document.body.classList.remove('is-loading'); document.body.classList.add('is-ready'); lenis?.start(); onScroll(); }, 300);
 }
 
 /* ---------------- smooth scroll ---------------- */
 let lenis = null;
 if (!reducedMotion && matchMedia('(pointer: fine)').matches && !params.has('nolenis')) {
-  lenis = new Lenis({ lerp: 0.11, wheelMultiplier: 0.95 }); lenis.stop();
+  lenis = new Lenis({ lerp: 0.1, wheelMultiplier: 0.9 }); lenis.stop();
   const raf = t => { lenis.raf(t); requestAnimationFrame(raf); }; requestAnimationFrame(raf);
 }
 const scrollToEl = el => { if (!el) return; if (lenis) lenis.scrollTo(el, { offset: 0, duration: 1.4 }); else el.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' }); };
@@ -40,21 +43,24 @@ document.addEventListener('click', e => {
   scrollToEl(el);
 });
 
-/* ---------------- story + stage ---------------- */
+/* ---------------- story + film ---------------- */
 const story = createStory($('#story'));
-const stageEl = $('#stage'), nav = $('#nav'), rail = $('#rail');
+const stageEl = $('#stage'), scrim = $('#scrim'), nav = $('#nav'), rail = $('#rail');
 const ui = { filmBar: $('#filmBar'), filmPct: $('#filmPct'), healBar: $('#healBar'), healTxt: $('#healTxt'), layers: $('#layers') };
-let lastChapter = '';
+let lastChapter = '', lastIndex = -1;
+// which media the next step needs, so it is already loading before the visitor gets there
+const NEEDS = { hero: ['hero'], film: ['ppf'], impact: ['impact'], heal: ['heal'], pcu: ['outro'], rain: ['rain'], monsoon: ['rain'], studio: ['finish-gloss', 'finish-satin', 'finish-onyx'], tint: ['tint-light', 'tint-dark'], layers: [], stones: ['stones'], roof: ['roof'], heat: ['heat-bare', 'heat-shield'], install: [], smash: ['smash'], exit: ['outro'] };
 
 function onScroll() {
   const y = window.scrollY;
-  const s = story.sample(y, ctx);
+  const s = story.sample(y, ctx), sc = s.scene;
   story.steps.forEach((st, i) => st.el.classList.toggle('is-active', i === s.index && s.active));
-  stage?.setTarget(s.state);
-  stage?.setHidden(s.state.dim > 0.985);
-  stageEl.style.setProperty('--dim', s.state.dim.toFixed(3));
+  film?.set(sc); film?.setHidden(sc.dim > 0.985);
+  stageEl.style.setProperty('--dim', sc.dim.toFixed(3));
+  scrim.dataset.side = s.active && sc.dim < 0.5 ? sc.side : 'C';
   nav.classList.toggle('is-solid', y > 40);
-  rail.classList.toggle('is-off', s.past || s.state.dim > 0.95);
+  rail.classList.toggle('is-off', s.past || sc.dim > 0.95);
+  if (s.index !== lastIndex) { lastIndex = s.index; const nx = story.steps[s.index + 1], nn = story.steps[s.index + 2]; film?.preload([...(nx ? NEEDS[nx.key] : []), ...(nn ? NEEDS[nn.key] : [])]); }
   const ch = s.past ? '' : s.step.chapter;
   if (ch !== lastChapter) {
     lastChapter = ch;
@@ -62,12 +68,19 @@ function onScroll() {
     $$('.nav__links a').forEach(a => a.classList.toggle('is-current', a.getAttribute('href') === '#' + ({ ppf: 'ppf', ceramic: 'ppf', finish: 'finish', tint: 'tint', thermo: 'thermo' }[ch] || '_')));
   }
   // live readouts
-  const film = s.state.film; ui.filmBar.style.transform = `scaleX(${film})`; ui.filmPct.textContent = Math.round(film * 100);
-  if (s.step.key === 'heal') { const h = 1 - s.state.scratch; ui.healBar.style.transform = `scaleX(${h})`; ui.healTxt.textContent = h > 0.97 ? 'Healed' : h > 0.05 ? 'Healing…' : 'Scratched'; }
+  if (sc.meter != null) { ui.filmBar.style.transform = `scaleX(${sc.meter})`; ui.filmPct.textContent = Math.round(sc.meter * 100); }
+  if (sc.heal != null) { ui.healBar.style.transform = `scaleX(${sc.heal})`; ui.healTxt.textContent = sc.heal > 0.97 ? 'Healed' : sc.heal > 0.05 ? 'Healing…' : 'Scratched'; }
   if (s.step.key === 'layers') ui.layers.style.setProperty('--spread', Math.min(1, Math.max(0, (s.p - 0.08) / 0.45)).toFixed(3));
 }
 window.addEventListener('scroll', onScroll, { passive: true });
 window.addEventListener('resize', () => { story.measure(); onScroll(); });
+
+// gentle hero motion while the visitor has not scrolled yet
+if (!reducedMotion && !params.has('still')) {
+  const t0 = performance.now();
+  const tick = now => { requestAnimationFrame(tick); if (window.scrollY > 4 || document.hidden) { if (ctx.idle) { ctx.idle = 0; } return; } ctx.idle = 0.07 * (1 - Math.cos((now - t0) / 2600)) / 2; onScroll(); };
+  requestAnimationFrame(tick);
+}
 
 /* ---------------- finish studio ---------------- */
 const chipsEl = $('#finishChips'), swEl = $('#swatches'), blurbEl = $('#finishBlurb'), productEl = $('#finishProduct'), selInput = $('#formSelection');
@@ -78,18 +91,16 @@ function updateSelectionField() {
 }
 function applyFinish() {
   const f = sel.finish;
-  const color = f.swatches ? sel.swatch.color : f.color || FACTORY.color;
-  const metal = f.swatches && sel.swatch.metal != null ? sel.swatch.metal : f.metal;
-  stage?.setFinish({ color, rough: f.rough, metal, cc: f.cc, ccr: f.ccr });
-  blurbEl.textContent = f.blurb; productEl.textContent = f.product; swEl.hidden = !f.swatches;
+  ctx.finish = f.swatches ? sel.swatch.still : f.still;
+  blurbEl.textContent = f.blurb; productEl.textContent = f.swatches ? `${f.product} · ${sel.swatch.name}` : f.product; swEl.hidden = !f.swatches;
   $$('.chip', chipsEl).forEach(c => c.setAttribute('aria-checked', String(c.dataset.id === f.id)));
   $$('.swatch', swEl).forEach(c => c.setAttribute('aria-checked', String(c.dataset.name === sel.swatch.name)));
-  updateSelectionField();
+  updateSelectionField(); onScroll();
 }
-FINISHES.forEach(f => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.role = 'radio'; b.dataset.id = f.id; b.textContent = f.label; b.setAttribute('aria-checked', 'false'); b.onclick = () => { sel.finish = f; applyFinish(); }; chipsEl.append(b); });
-SWATCHES.forEach(s => { const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch'; b.role = 'radio'; b.dataset.name = s.name; b.title = s.name; b.setAttribute('aria-label', s.name); b.style.setProperty('--c', s.color); b.onclick = () => { sel.swatch = s; applyFinish(); }; swEl.append(b); });
+FINISHES.forEach(f => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.role = 'radio'; b.dataset.id = f.id; b.textContent = f.label; b.setAttribute('aria-checked', 'false'); b.onclick = () => { sel.finish = f; if (f.swatches) film?.preload(SWATCHES.map(s => s.still)); applyFinish(); }; chipsEl.append(b); });
+SWATCHES.forEach(s => { const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch'; b.role = 'radio'; b.dataset.name = s.name; b.title = s.name; b.setAttribute('aria-label', s.name); b.style.setProperty('--c', s.color); b.onpointerenter = () => film?.loadStill(s.still); b.onclick = () => { sel.swatch = s; applyFinish(); }; swEl.append(b); });
 $$('.chip', chipsEl)[0].setAttribute('aria-checked', 'true');
-$('#quoteFinish').addEventListener('click', () => prefillService(sel.finish.swatches ? 'Color change wrap' : 'Paint protection film'));
+$('#quoteFinish').addEventListener('click', () => prefillService(sel.finish.service));
 
 /* ---------------- tint slider ---------------- */
 const tintUI = { range: $('#tintRange'), name: $('#tintName'), shade: $('#tintShade'), vlt: $('#tintVlt'), irr: $('#tintIrr'), uvr: $('#tintUvr'), tser: $('#tintTser'), heat: $('#tintHeat') };
@@ -99,7 +110,8 @@ function applyTint() {
   tintUI.irr.textContent = t.irr; tintUI.uvr.textContent = t.uvr; tintUI.tser.textContent = t.tser;
   tintUI.heat.style.transform = `scaleX(${Math.max(0.04, (100 - t.tser) / 100)})`;
   tintUI.range.setAttribute('aria-valuetext', `${t.name}, ${t.shade}, ${t.vlt}% VLT`);
-  stage?.setTint(1 - t.vlt / 100); updateSelectionField();
+  ctx.tint = Math.pow(1 - (t.vlt - 5) / 71, 0.8);          // 5% VLT = fully dark still, 76% = light still
+  updateSelectionField(); onScroll();
 }
 tintUI.range.addEventListener('input', applyTint);
 
@@ -116,13 +128,13 @@ tintUI.range.addEventListener('input', applyTint);
 })();
 
 /* thermoshield toggle */
-$$('#thermoToggle button').forEach(b => b.addEventListener('click', () => { ctx.thermoUser = +b.dataset.on; $$('#thermoToggle button').forEach(x => x.classList.toggle('is-on', x === b)); onScroll(); }));
+$$('#thermoToggle button').forEach(b => b.addEventListener('click', () => { ctx.thermo = +b.dataset.on; $$('#thermoToggle button').forEach(x => x.classList.toggle('is-on', x === b)); onScroll(); }));
 
 /* ---------------- content: gallery, video, reveal ---------------- */
 (() => {
-  const g = $('#gallery'); let down = false, sx = 0, sl = 0, moved = 0;
-  g.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; down = true; sx = e.clientX; sl = g.scrollLeft; moved = 0; g.classList.add('is-dragging'); });
-  window.addEventListener('pointermove', e => { if (!down) return; moved = e.clientX - sx; g.scrollLeft = sl - moved; });
+  const g = $('#gallery'); let down = false, sx = 0, sl = 0;
+  g.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; down = true; sx = e.clientX; sl = g.scrollLeft; g.classList.add('is-dragging'); });
+  window.addEventListener('pointermove', e => { if (!down) return; g.scrollLeft = sl - (e.clientX - sx); });
   window.addEventListener('pointerup', () => { down = false; g.classList.remove('is-dragging'); });
   g.addEventListener('keydown', e => { if (e.key === 'ArrowRight') g.scrollBy({ left: 400, behavior: 'smooth' }); if (e.key === 'ArrowLeft') g.scrollBy({ left: -400, behavior: 'smooth' }); });
 })();
@@ -173,21 +185,16 @@ $('#year').textContent = new Date().getFullYear();
 
 /* ---------------- boot ---------------- */
 async function boot() {
-  story.measure(); applyTint(); updateSelectionField(); setProgress(0.03);
-  const canvas = $('#gl');
-  const hasGL = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2')); } catch { return false; } })();
-  if (!hasGL || params.has('nogl')) { document.body.classList.add('no-gl'); ready(); return; }
-  try {
-    const { createStage } = await import('./gl/stage.js');
-    stage = await createStage({ canvas, base: BASE, reducedMotion, onProgress: p => setProgress(0.03 + p * 0.92) });
-    stage.setTint(1 - sel.tint.vlt / 100);
-    stage.setTarget(story.sample(window.scrollY, ctx).state);
-    stage.snap(); stage.setLit(0); if (params.has('still')) stage.setLit(1); else stage.start();
-    window.__wf = { stage, story, onScroll };
-  } catch (err) {
-    console.error('[WrapFinest] 3D stage failed, using fallback', err);
-    document.body.classList.add('no-gl');
-  }
+  story.measure(); applyTint(); updateSelectionField(); setProgress(0.04);
+  film = createFilm({ canvas: $('#film'), base: BASE, manifest, reducedMotion });
+  window.__wf = { film, story, onScroll, ctx };
+  // show the page once the hero is scrubbable; everything else streams in behind
+  const heroN = manifest.seqs.hero?.n || 0, need = Math.min(heroN, 12);
+  let done = 0; const bump = () => setProgress(0.04 + 0.9 * Math.min(1, ++done / Math.max(1, need)));
+  const waits = []; for (let i = 1; i <= need; i++) waits.push(film.whenSeq('hero', i).then(bump));
+  const timeout = new Promise(r => setTimeout(r, 9000));
+  await Promise.race([Promise.all(waits), timeout]);
+  onScroll(); film.snap(); film.start(); film.preload(['ppf']);
   story.measure(); ready();
 }
 if (document.fonts?.ready) document.fonts.ready.then(() => { story.measure(); onScroll(); });

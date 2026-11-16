@@ -108,7 +108,13 @@ body.is-ready .preloader { opacity: 0; visibility: hidden; }
 /* ---------- stage ---------- */
 .stage { position: fixed; inset: 0; z-index: 0; background: radial-gradient(120% 90% at 60% 40%, #15171b 0%, #0a0b0d 60%); }
 .stage canvas { width: 100%; height: 100%; display: block; touch-action: pan-y; }
-.stage__vignette { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(10, 11, 13, 0.55) 0%, transparent 18%, transparent 70%, rgba(10, 11, 13, 0.75) 100%); }
+.stage__scrim { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.6s var(--ease); }
+.stage__scrim::before, .stage__scrim::after { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.6s var(--ease); }
+.stage__scrim::before { background: linear-gradient(90deg, rgba(8, 9, 11, 0.94) 0%, rgba(8, 9, 11, 0.8) 26%, rgba(8, 9, 11, 0.35) 46%, transparent 62%); }
+.stage__scrim::after { background: linear-gradient(270deg, rgba(8, 9, 11, 0.94) 0%, rgba(8, 9, 11, 0.8) 26%, rgba(8, 9, 11, 0.35) 46%, transparent 62%); }
+.stage__scrim[data-side='L'], .stage__scrim[data-side='R'] { opacity: 1; }
+.stage__scrim[data-side='L']::before, .stage__scrim[data-side='R']::after { opacity: 1; }
+.stage__vignette { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(10, 11, 13, 0.6) 0%, transparent 16%, transparent 78%, rgba(10, 11, 13, 0.7) 100%); }
 .stage::after { content: ''; position: absolute; inset: 0; background: var(--carbon); opacity: var(--dim, 0); pointer-events: none; transition: opacity 0.2s linear; }
 body.no-gl .stage { background: linear-gradient(rgba(10, 11, 13, 0.6), rgba(10, 11, 13, 0.92)), url('/media/work/corvette.webp') center / cover; }
 body.no-gl .stage canvas { display: none; }
@@ -152,7 +158,6 @@ body.no-gl .stage canvas { display: none; }
   opacity: 0; transform: translateY(26px); transition: opacity 0.6s var(--ease), transform 0.8s var(--ease);
 }
 .step.is-active .panel { opacity: 1; transform: none; }
-.panel::before { content: ''; position: absolute; inset: -70px -110px; z-index: -1; background: radial-gradient(closest-side, rgba(10, 11, 13, 0.72), rgba(10, 11, 13, 0.4) 60%, transparent); pointer-events: none; }
 .panel > p:not(.chapter):not(.fine):not(.eyebrow) { color: rgba(242, 242, 240, 0.78); margin-top: 16px; }
 .panel--right { margin-left: auto; }
 .panel--hero { top: max(96px, 17vh); width: min(880px, 100%); }
@@ -202,8 +207,6 @@ body.no-gl .stage canvas { display: none; }
 .swatch[aria-checked='true'] { border-color: var(--ceramic); transform: scale(1.12); }
 .studio__product { color: var(--orange); margin: 18px 0 22px; }
 .studio__blurb { min-height: 4.8em; }
-.drag-hint { position: sticky; top: calc(100vh - 70px); align-self: flex-start; margin-left: auto; color: var(--steel); opacity: 0; transition: opacity 0.5s; }
-.step.is-active .drag-hint { opacity: 1; }
 
 /* tint */
 .tint { margin-top: 22px; padding: 20px; background: rgba(22, 24, 28, 0.72); border: 1px solid var(--line); backdrop-filter: blur(14px); }
@@ -363,7 +366,7 @@ address { font-style: normal; font-size: 1.1rem; line-height: 1.6; margin-top: 2
   .nav__word { display: none; }
   .step { align-items: stretch; }
   .panel { top: auto; bottom: 14px; align-self: flex-end; width: 100%; padding: 18px 18px 20px; background: rgba(12, 13, 16, 0.78); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--line); }
-  .panel::before { display: none; }
+  .stage__scrim { display: none; }
   .panel--hero { background: none; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0 0 64px; bottom: 0; }
   .panel--wide { bottom: auto; top: 70px; align-self: flex-start; background: none; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; }
   .step--card { min-height: auto; padding-block: 16vh; }
@@ -391,7 +394,6 @@ address { font-style: normal; font-size: 1.1rem; line-height: 1.6; margin-top: 2
   .tint__vlt b { font-size: 1.8rem; }
   .tint__specs div { padding: 6px 0; }
   .panel--tint > p:not(.chapter) { display: none; }
-  .drag-hint { display: none; }
   .layers__stack { left: 0; width: 52%; }
   .layers__labels { width: 44%; }
   .layers__labels li { font-size: 0.56rem; }

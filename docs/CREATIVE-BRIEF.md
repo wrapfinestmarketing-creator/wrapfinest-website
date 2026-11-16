@@ -1,6 +1,6 @@
 # WrapFinest — Creative Brief & Build Spec
 
-> Status: **DRAFT — awaiting owner approval.** This is the single source of truth for the build.
+> Status: **Approved.** Build note: the scroll story uses pre-rendered cinematic frames (generated in Higgsfield from photos of the real bay) instead of a real-time 3D model. This is the single source of truth for the build.
 > Nothing in the site may contradict the facts in §3. Anything not listed here is not claimed.
 
 ---
