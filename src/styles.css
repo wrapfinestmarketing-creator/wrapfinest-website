@@ -182,6 +182,10 @@ body.no-gl .stage canvas { display: none; }
 .stats b { display: block; font-family: var(--mono); font-weight: 500; font-size: clamp(1.05rem, 1.6vw, 1.5rem); letter-spacing: -0.02em; color: var(--ceramic); }
 .stats span { display: block; font-size: 0.74rem; color: var(--steel); line-height: 1.35; margin-top: 4px; }
 
+.ba-flag { display: inline-flex; align-items: center; gap: 10px; margin-top: 22px; padding: 8px 14px; border: 1px solid var(--line); background: rgba(10, 11, 13, 0.6); color: var(--ceramic); }
+.ba-flag::before { content: ''; width: 9px; height: 9px; border-radius: 50%; }
+.ba-flag--bad::before { background: #ff4d4d; box-shadow: 0 0 10px #ff4d4d; }
+.ba-flag--good::before { background: #4ddc8a; box-shadow: 0 0 10px #4ddc8a; }
 .film-meter { display: flex; align-items: center; gap: 14px; margin-top: 24px; color: var(--steel); }
 .film-meter__track { flex: 1; height: 3px; background: var(--line); }
 .film-meter__track i { display: block; height: 100%; background: var(--orange); width: 100%; transform-origin: 0 50%; transform: scaleX(0); box-shadow: 0 0 14px var(--orange); }
