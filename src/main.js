@@ -4,6 +4,7 @@ import { TINTS, FINISHES, SWATCHES, TINT_LAYERS, CONTACT } from './data.js';
 import { createStory } from './story.js';
 import { createFilm } from './film.js';
 import { initShop } from './shop.js';
+import { createLightbox } from './lightbox.js';
 import manifest from './film-manifest.json';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -147,8 +148,8 @@ $$('#thermoToggle button').forEach(b => b.addEventListener('click', () => { ctx.
 /* ---------------- content: gallery, video, reveal ---------------- */
 (() => {
   const g = $('#gallery'); let down = false, sx = 0, sl = 0;
-  g.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; down = true; sx = e.clientX; sl = g.scrollLeft; g.classList.add('is-dragging'); });
-  window.addEventListener('pointermove', e => { if (!down) return; g.scrollLeft = sl - (e.clientX - sx); });
+  g.addEventListener('pointerdown', e => { g.dataset.dragged = '0'; if (e.pointerType === 'touch') return; down = true; sx = e.clientX; sl = g.scrollLeft; g.classList.add('is-dragging'); });
+  window.addEventListener('pointermove', e => { if (!down) return; if (Math.abs(e.clientX - sx) > 6) g.dataset.dragged = '1'; g.scrollLeft = sl - (e.clientX - sx); });
   window.addEventListener('pointerup', () => { down = false; g.classList.remove('is-dragging'); });
   g.addEventListener('keydown', e => { if (e.key === 'ArrowRight') g.scrollBy({ left: 400, behavior: 'smooth' }); if (e.key === 'ArrowLeft') g.scrollBy({ left: -400, behavior: 'smooth' }); });
 })();
@@ -195,6 +196,18 @@ function prefillService(name) { const c = $$('#quoteForm input[name="services"]'
     } finally { btn.disabled = false; btn.textContent = 'Send request'; }
   });
 })();
+/* ---------------- zoom viewer ---------------- */
+const lightbox = createLightbox({ onOpen: () => lenis?.stop(), onClose: () => lenis?.start() });
+// any [data-lightbox] group: clicking one of its images opens all of them in the viewer
+const groupItems = g => $$('img', g).map(im => ({ src: im.dataset.full || im.currentSrc || im.src, thumb: im.currentSrc || im.src, alt: im.alt, caption: [...(im.closest('figure')?.querySelector('figcaption')?.childNodes || [])].map(n => n.textContent.trim()).filter(Boolean).join(' · ') }));
+$$('[data-lightbox]').forEach(g => {
+  $$('img', g).forEach((im, n) => {
+    const fig = im.closest('figure') || im; fig.classList.add('is-zoomable'); fig.tabIndex = 0; fig.setAttribute('role', 'button'); fig.setAttribute('aria-label', `View larger: ${im.alt}`);
+    fig.addEventListener('click', () => { if (g.dataset.dragged === '1') return; lightbox.open(groupItems(g), n); });
+    fig.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); lightbox.open(groupItems(g), n); } });
+  });
+});
+
 /* ---------------- accessories shop ---------------- */
 (() => {
   const box = $('#formCart'), list = $('#formCartList'), total = $('#formCartTotal'), copy = $('#formCartCopy');
@@ -204,7 +217,7 @@ function prefillService(name) { const c = $$('#quoteForm input[name="services"]'
     total.textContent = sum.count ? `Estimated total ${sum.totalText}` : '';
     if (sum.count) prefillService('Tesla accessories');
   };
-  shop = initShop({ base: BASE, onChange: render });
+  shop = initShop({ base: BASE, onChange: render, lightbox });
   copy.addEventListener('click', async () => {
     const text = `Hi WrapFinest, I'd like to ask about these Tesla accessories:\n${shop.summary().text}`;
     try { await navigator.clipboard.writeText(text); copy.textContent = 'Copied. Paste it in Messenger'; } catch { copy.textContent = 'Could not copy. Please send the form instead'; return; }

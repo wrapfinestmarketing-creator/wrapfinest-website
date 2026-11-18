@@ -1,11 +1,11 @@
 // Accessories catalogue + inquiry list. No checkout: the list is sent with the quote form or pasted into Messenger.
-import { MODELS, CATEGORIES, ACCESSORIES, priceFor, imgFor, noteFor, peso } from './accessories.js';
+import { MODELS, CATEGORIES, ACCESSORIES, priceFor, imgFor, noteFor, galleryFor, peso } from './accessories.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const KEY = 'wf-inquiry-v1';
 
-export function initShop({ base, onChange }) {
+export function initShop({ base, onChange, lightbox }) {
   const grid = $('#shopGrid'), modelEl = $('#shopModel'), catEl = $('#shopCat'), countEl = $('#shopCount');
   const bar = $('#cartBar'), barCount = $('#cartCount'), barTotal = $('#cartTotal');
   const state = { model: 'YL', cat: 'all' };
@@ -42,7 +42,7 @@ export function initShop({ base, onChange }) {
       const p = priceFor(a, state.model), added = inCart(a.id, state.model), note = noteFor(a, state.model);
       const card = el('article', 'pcard' + (added ? ' is-added' : ''));
       card.innerHTML = `
-        <div class="pcard__img"><img src="${base}media/acc/${imgFor(a, state.model)}.webp" alt="" loading="lazy" />${a.tag ? `<span class="pcard__tag mono">${a.tag}</span>` : ''}</div>
+        <button type="button" class="pcard__img" data-zoom="${a.id}" aria-label="View larger photos of ${a.name}"><img src="${base}media/acc/${imgFor(a, state.model)}.webp" alt="${a.name}" loading="lazy" width="720" height="720" />${a.tag ? `<span class="pcard__tag mono">${a.tag}</span>` : ''}${extras(a)}<span class="pcard__zoom" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></button>
         <div class="pcard__body">
           <h3>${a.name}</h3>
           <p>${a.desc}${note ? ` <em>${note}.</em>` : ''}</p>
@@ -55,7 +55,36 @@ export function initShop({ base, onChange }) {
     }
     countEl.textContent = `${items.length} item${items.length === 1 ? '' : 's'} for ${modelLabel(state.model)}`;
   }
-  grid.addEventListener('click', e => { const b = e.target.closest('.pcard__add'); if (b) toggle(b.dataset.id); });
+  grid.addEventListener('click', e => {
+    const b = e.target.closest('.pcard__add'); if (b) return toggle(b.dataset.id);
+    const z = e.target.closest('[data-zoom]'); if (z) openProduct(z.dataset.zoom);
+  });
+
+  // small chips on the card: how many real photos / a video are in the viewer
+  function extras(a) {
+    const n = (a.photos || []).length, v = a.video && (typeof a.video === 'string' || a.video[state.model]);
+    if (!n && !v) return '';
+    return `<span class="pcard__more mono">${n ? `${n} real photo${n > 1 ? 's' : ''}` : ''}${n && v ? ' · ' : ''}${v ? 'video' : ''}</span>`;
+  }
+
+  // zoom viewer with a product panel (price + add to inquiry stay in sync with the card)
+  function openProduct(id) {
+    const a = ACCESSORIES.find(x => x.id === id); if (!a || !lightbox) return;
+    const model = state.model;
+    const panel = host => {
+      const p = priceFor(a, model), added = inCart(a.id, model), note = noteFor(a, model);
+      host.innerHTML = `
+        <p class="lb__brand mono"><img src="${base}brand/jdc.webp" alt="" width="40" height="20" /> JDC AI Auto Interesting</p>
+        <h3>${a.name}</h3>
+        <p class="lb__model mono">For ${modelLabel(model)}${a.tag ? ` · ${a.tag}` : ''}</p>
+        <p class="lb__price">${p == null ? 'Price on request' : `${a.from ? '<small>From</small> ' : ''}${peso(p)}`}</p>
+        <p class="lb__desc">${a.desc}${note ? ` <em>${note}.</em>` : ''}</p>
+        <button type="button" class="btn lb__add" aria-pressed="${added}">${added ? '✓ In your inquiry list' : '+ Add to inquiry'}</button>
+        <p class="lb__fine">Official JDC distributor, Pampanga. Fitting available at our bay.</p>`;
+      host.querySelector('.lb__add').onclick = () => { const i = cart.findIndex(c => c.id === a.id && c.model === model); if (i >= 0) cart.splice(i, 1); else cart.push({ id: a.id, model }); save(); renderGrid(); renderBar(); panel(host); };
+    };
+    lightbox.open(galleryFor(a, model, base), 0, panel);
+  }
 
   const seg = (host, list, key, cls) => list.forEach(o => {
     const b = el('button', cls, o.label); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(state[key] === o.id));
