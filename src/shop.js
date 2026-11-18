@@ -20,7 +20,7 @@ export function initShop({ base, onChange, lightbox }) {
   }
   function summary() {
     const ls = lines(), total = ls.reduce((s, l) => s + (l.price || 0), 0), open = ls.some(l => l.price == null || l.from);
-    return { lines: ls, count: ls.length, total, totalText: ls.length ? peso(total) + (open ? '+' : '') : '', text: ls.map(l => `• ${l.label}: ${l.priceText}`).join('\n') + (ls.length ? `\nEstimated total: ${peso(total)}${open ? ' + items on request' : ''}` : '') };
+    return { lines: ls, count: ls.length, total, totalText: ls.length ? peso(total) + (open ? '+' : '') : '', text: ls.map(l => `• ${l.label}: ${l.priceText}`).join('\n') + (ls.length ? `\nEstimated total: ${peso(total)}${open ? ' + items on request' : ''}\nFree installation at WrapFinest` : '') };
   }
 
   function renderBar() {
@@ -80,7 +80,7 @@ export function initShop({ base, onChange, lightbox }) {
         <p class="lb__price">${p == null ? 'Price on request' : `${a.from ? '<small>From</small> ' : ''}${peso(p)}`}</p>
         <p class="lb__desc">${a.desc}${note ? ` <em>${note}.</em>` : ''}</p>
         <button type="button" class="btn lb__add" aria-pressed="${added}">${added ? '✓ In your inquiry list' : '+ Add to inquiry'}</button>
-        <p class="lb__fine">Official JDC distributor, Pampanga. Fitting available at our bay.</p>`;
+        <p class="lb__fine">Free installation at our bay in Pampanga. Official JDC distributor.</p>`;
       host.querySelector('.lb__add').onclick = () => { const i = cart.findIndex(c => c.id === a.id && c.model === model); if (i >= 0) cart.splice(i, 1); else cart.push({ id: a.id, model }); save(); renderGrid(); renderBar(); panel(host); };
     };
     lightbox.open(galleryFor(a, model, base), 0, panel);

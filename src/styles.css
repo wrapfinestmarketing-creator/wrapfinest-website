@@ -372,6 +372,7 @@ address { font-style: normal; font-size: 1.1rem; line-height: 1.6; margin-top: 2
 /* ---------- accessories shop ---------- */
 .shop__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
 .shop__brand { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; color: var(--steel); }
+.shop__free { padding: 5px 10px; background: var(--orange); color: var(--carbon); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .shop__brand img { height: 64px; width: auto; background: #0c1943; padding: 6px 10px; border: 1px solid var(--line); }
 .shop__bar { position: sticky; top: 68px; z-index: 6; display: flex; align-items: center; gap: 14px 22px; flex-wrap: wrap; margin-top: 40px; padding: 14px 0; background: linear-gradient(var(--carbon) 78%, transparent); }
 .seg { display: inline-flex; border: 1px solid var(--line); background: var(--graphite); }

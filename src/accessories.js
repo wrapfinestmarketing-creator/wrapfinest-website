@@ -40,8 +40,8 @@ export const ACCESSORIES = [
     desc: 'Motorised shade for the Model YL panoramic roof with voice control, a manual button and ambient lighting modes. JDC rates it to block up to 95% of sun heat and glare.' },
 
   // ---- exterior & body
-  { id: 'body-kit', cat: 'exterior', name: 'Yofer full body kit', tag: 'Fitted in our bay', fit: ['YL'], price: null, img: 'body-kit',
-    photos: ['real/yofer-07173', 'real/yofer-07089', 'real/yofer-07123', 'real/yofer-07250', 'real/yofer-07229', 'real/yofer-07213', 'real/yofer-07106', 'real/yofer-07135', 'real/yofer-07163', 'real/yofer-07224'], desc: 'Gloss-black ABS front lip, side skirts and rear diffuser for a lower, wider look. Professionally aligned and fitted by WrapFinest.' },
+  { id: 'body-kit', cat: 'exterior', name: 'Yofer full body kit', tag: 'Fitted in our bay', fit: ['YL'], price: 42000, img: 'body-kit',
+    photos: ['real/yofer-07173', 'real/yofer-07089', 'real/yofer-07123', 'real/yofer-07250', 'real/yofer-07229', 'real/yofer-07213', 'real/yofer-07106', 'real/yofer-07135', 'real/yofer-07163', 'real/yofer-07224'], desc: 'Gloss-black ABS front lip, side skirts and rear diffuser for a lower, wider look. Professionally aligned and fitted by WrapFinest, installation included.' },
   { id: 'chassis-guard', cat: 'exterior', name: 'Under chassis guard', fit: ALL, price: 22000, img: 'chassis-guard',
     desc: 'Magnesium-aluminium alloy plates with anti-corrosion coating that shield the battery, motors and cooling system from road debris. Bolt-on, direct fit.', note: 'Check fitment with us for your exact model' },
   { id: 'aerodisc', cat: 'exterior', name: 'Aerodisc wheel covers', fit: ALL, price: 12800, img: 'aerodisc', desc: 'UV-printed, gloss-finished wheel discs. Also available in custom-made designs.' },
@@ -79,7 +79,7 @@ export const ACCESSORIES = [
 
   // ---- charging
   { id: 'ev-charger', cat: 'charge', name: 'Portable EV charger', fit: ALL, price: 9800, img: 'ev-charger', desc: 'Type 2 portable charger with adjustable 6 to 16 A current, LED display, delayed charging and a 5 m cable. IP65.' },
-  { id: 'gbt-adapter', cat: 'charge', name: 'Type 2 to GBT adapter', fit: ALL, price: null, img: 'gbt-adapter', desc: 'Lets a Type 2 vehicle charge at GBT stations. Rated up to 32 A.' },
+  { id: 'gbt-adapter', cat: 'charge', name: 'Type 2 to GBT adapter', fit: ALL, price: 2500, img: 'gbt-adapter', desc: 'Lets a Type 2 vehicle charge at GBT stations. Rated up to 32 A.' },
   { id: 'console-charger', cat: 'charge', name: 'Console charger', fit: ALL, price: 1600, img: 'console-charger', photos: ['real/jdc18'], desc: 'Docking charger with built-in cables plus USB and Type-C ports. Lightning or Type-C versions.' },
   { id: 'rear-charger', cat: 'charge', name: 'Rear console charger', fit: ALL, price: 1650, img: 'rear-charger', desc: '3-in-1 rear vent dock with vent protection, two retractable charging cables and a fragrance slot.' },
 ];
