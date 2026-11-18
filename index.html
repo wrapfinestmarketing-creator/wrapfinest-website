@@ -58,8 +58,8 @@
     <div class="stage__scrim" id="scrim"></div>
     <div class="stage__vignette"></div>
     <div class="stage__tag" id="stageTag" data-side="L">
-      <span class="ptag__logo"><img src="./brand/f1-autofilms.webp" alt="F1 Auto Films" width="112" height="54" /></span>
-      <span class="ptag__txt"><small>Film shown</small><b id="stageTagName">Apex Ultra · PCU</b></span>
+      <span class="ptag__logo"><img id="stageTagLogo" src="./brand/f1-autofilms.webp" alt="F1 Auto Films" width="112" height="54" /></span>
+      <span class="ptag__txt"><small id="stageTagLabel">Film shown</small><b id="stageTagName">Apex Ultra · PCU</b></span>
     </div>
   </div>
 
@@ -75,6 +75,7 @@
       <a href="#tint">Tint</a>
       <a href="#thermo">Glass Armor</a>
       <a href="#work">Work</a>
+      <a href="#tesla">Accessories</a>
       <a href="#pricing">Pricing</a>
     </nav>
     <a class="btn btn--sm btn--primary" href="#quote">Get a Quote</a>
@@ -88,6 +89,7 @@
     <a href="#finish" data-rail="finish"><i></i><span>03 Finish</span></a>
     <a href="#tint" data-rail="tint"><i></i><span>04 Tint</span></a>
     <a href="#thermo" data-rail="thermo"><i></i><span>05 Glass</span></a>
+    <a href="#tesla" data-rail="acc"><i></i><span>06 Tesla</span></a>
   </aside>
 
   <main id="top">
@@ -353,7 +355,70 @@
         </div>
       </section>
 
-      <section class="step step--exit" data-step="exit" data-chapter="thermo" aria-hidden="true"></section>
+      <!-- 06 TESLA ACCESSORIES (JDC) -->
+      <section class="step" id="tesla" data-step="accintro" data-brand="jdc" data-product="Yofer body kit · Model YL" data-chapter="acc">
+        <div class="panel panel--left">
+          <p class="chapter mono">06 — Tesla Accessories</p>
+          <h2 class="title">Protected. Now make it yours.</h2>
+          <p>WrapFinest is the official JDC AI Auto Interesting distributor in Pampanga. Body kits, floor mats, sunroof shades and more than 35 accessories for Model 3, Model Y and Model YL, supplied and fitted in our bay.</p>
+          <div class="badge-f1 badge-jdc">
+            <span class="badge-f1__logo"><img src="./brand/jdc.webp" alt="JDC AI Auto Interesting" width="92" height="36" /></span>
+            <span class="badge-f1__tag">Official Distributor</span>
+            <span class="badge-f1__name">Pampanga</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="step step--tall" data-step="kitfront" data-brand="jdc" data-product="Yofer body kit · Model YL" data-chapter="acc">
+        <div class="panel panel--right">
+          <p class="chapter mono">06 — Yofer Body Kit</p>
+          <h2 class="title">Lower. Wider. Sharper.</h2>
+          <p>A complete front, side and rear styling upgrade in gloss-black ABS, designed for proper fitment on the Model YL. Keep scrolling to fit the kit.</p>
+          <ul class="stats">
+            <li><b>3 zones</b><span>front lip, side skirts, rear diffuser</span></li>
+            <li><b>ABS</b><span>high-quality plastic</span></li>
+            <li><b>Gloss</b><span>piano-black finish</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="step" data-step="kitrear" data-brand="jdc" data-product="Yofer body kit · Model YL" data-chapter="acc">
+        <div class="panel panel--left">
+          <p class="chapter mono">06 — Rear diffuser</p>
+          <h2 class="title">Finished from every angle.</h2>
+          <p>The rear diffuser adds definition to the lower bumper and the side skirts carry the line from front to back. Our technicians align and fit every piece, because clean fitment is what makes a kit look factory.</p>
+          <a class="btn btn--primary" href="#quote" data-prefill="Tesla accessories" data-add="body-kit">Ask for kit pricing</a>
+        </div>
+      </section>
+
+      <section class="step step--tall" data-step="mats" data-brand="jdc" data-product="Dual-layer floor mats" data-chapter="acc">
+        <div class="panel panel--left">
+          <p class="chapter mono">06 — Dual-layer floor mats</p>
+          <h2 class="title">Two layers. One exact fit.</h2>
+          <p>A TPE injection-moulded tray catches water, sand and mud. A detachable chenille carpet layer sits on top, so the cabin still feels premium. Odorless, with no sharp edges.</p>
+          <ul class="stats">
+            <li><b>TPE</b><span>moulded all-weather tray</span></li>
+            <li><b>Chenille</b><span>detachable carpet layer</span></li>
+            <li><b>₱6,000</b><span>sets start at</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="step step--tall" data-step="shade" data-brand="jdc" data-product="Retractable sunroof shade" data-chapter="acc">
+        <div class="panel panel--right">
+          <p class="chapter mono">06 — Sunroof shade</p>
+          <h2 class="title">Close the roof on the heat.</h2>
+          <p>A fitted retractable shade for the panoramic roof. JDC rates it to block up to 95% of the sun's heat and glare. Pair it with Thermoshield X on the outside of the glass for protection on both sides.</p>
+          <ul class="stats">
+            <li><b>Up to 95%</b><span>heat and glare blocked, per JDC</span></li>
+            <li><b>₱13,000</b><span>manual shade starts at</span></li>
+            <li><b>₱25,000</b><span>automatic, voice control and ambient light</span></li>
+          </ul>
+          <a class="btn btn--ghost" href="#accessories">Browse all accessories <span aria-hidden="true">↓</span></a>
+        </div>
+      </section>
+
+      <section class="step step--exit" data-step="exit" data-chapter="acc" aria-hidden="true"></section>
     </div>
 
     <!-- ===================================================== -->
@@ -361,10 +426,54 @@
     <!-- ===================================================== -->
     <div class="content">
 
+      <section class="sec shop" id="accessories">
+        <div class="wrap">
+          <div class="shop__head">
+            <div>
+              <p class="chapter mono">Tesla Accessories</p>
+              <h2 class="title">The JDC catalogue, fitted by WrapFinest.</h2>
+              <p class="narrow">Choose your Tesla, add what you like to an inquiry list, and send it with your quote request. We confirm stock, fitment and the final price before anything is ordered.</p>
+            </div>
+            <div class="shop__brand">
+              <img src="./brand/jdc.webp" alt="JDC AI Auto Interesting" width="184" height="72" />
+              <span class="mono">Official distributor · Pampanga</span>
+            </div>
+          </div>
+          <div class="shop__list">
+          <div class="shop__bar">
+            <div class="seg" id="shopModel" role="radiogroup" aria-label="Tesla model"></div>
+            <div class="pills" id="shopCat" role="radiogroup" aria-label="Category"></div>
+            <span class="shop__count mono" id="shopCount" aria-live="polite"></span>
+          </div>
+          <div class="shop__grid" id="shopGrid"></div>
+          <p class="fine mono">Prices from the JDC catalogue, per set unless stated. Final price, fitment and availability confirmed by WrapFinest.</p>
+          </div>
+
+          <div class="real">
+            <h3 class="real__title">Real installs from our bay</h3>
+            <div class="real__grid">
+              <article class="real__vid voice"><video playsinline preload="none" poster="./media/video/install-kit-poster.jpg" src="./media/video/install-kit.mp4"></video><button type="button" aria-label="Play body kit install video">▶</button><p>Yofer body kit install, Model YL</p></article>
+              <article class="real__vid voice"><video playsinline preload="none" poster="./media/video/install-cabin-poster.jpg" src="./media/video/install-cabin.mp4"></video><button type="button" aria-label="Play sunroof shade and mat install video">▶</button><p>Sunroof shade and matting install</p></article>
+              <div class="real__photos">
+              <figure><img src="./media/acc/real-kit-front.webp" alt="White Tesla Model YL with gloss-black Yofer body kit, front view" loading="lazy" /><figcaption>Body kit, front</figcaption></figure>
+              <figure><img src="./media/acc/real-kit-rear.webp" alt="White Tesla Model YL with gloss-black rear diffuser" loading="lazy" /><figcaption>Body kit, rear</figcaption></figure>
+              <figure><img src="./media/acc/real-mats-front.webp" alt="Dual-layer floor mat fitted in a Tesla driver footwell" loading="lazy" /><figcaption>Dual-layer mats</figcaption></figure>
+              <figure><img src="./media/acc/real-shade.webp" alt="Retractable sunroof shade closed inside a Tesla Model YL" loading="lazy" /><figcaption>Sunroof shade</figcaption></figure>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cartbar" id="cartBar" hidden>
+          <span class="cartbar__info"><b id="cartCount">0 items</b><span class="mono">Estimated <i id="cartTotal"></i></span></span>
+          <button type="button" class="cartbar__clear mono" id="cartClear">Clear</button>
+          <a class="btn btn--primary btn--sm" href="#quote" data-prefill="Tesla accessories">Send inquiry</a>
+        </div>
+      </section>
+
       <section class="sec coating" id="coating">
         <div class="wrap coating__grid">
           <div>
-            <p class="chapter mono">06 — Ceramic Coating</p>
+            <p class="chapter mono">07 — Ceramic Coating</p>
             <h2 class="title">Ronin Vision. Five years of gloss.</h2>
             <p>Not ready for film yet? Our Ronin Vision ceramic coating adds deep gloss and easy washing to bare paint for up to five years.</p>
             <a class="btn btn--ghost" href="#quote" data-prefill="Ceramic coating">Ask about coating</a>
@@ -476,8 +585,14 @@
                 <label><input type="checkbox" name="services" value="Nano ceramic tint" /><span>Ceramic tint</span></label>
                 <label><input type="checkbox" name="services" value="Thermoshield X" /><span>Thermoshield X</span></label>
                 <label><input type="checkbox" name="services" value="Ceramic coating" /><span>Coating</span></label>
+                <label><input type="checkbox" name="services" value="Tesla accessories" /><span>Tesla accessories</span></label>
               </div>
             </fieldset>
+            <div class="form__cart" id="formCart" hidden>
+              <div class="form__cart-head"><span class="mono">Your accessory list</span><button type="button" class="mono" id="formCartCopy">Copy list and open Messenger</button></div>
+              <ul id="formCartList"></ul>
+              <p class="mono" id="formCartTotal"></p>
+            </div>
             <label>Finish or shade you liked <small>(filled in from the studio and tint slider)</small><input name="selection" id="formSelection" /></label>
             <label>Anything else?<textarea name="message" rows="3"></textarea></label>
             <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
@@ -494,7 +609,7 @@
       <div>
         <img src="./brand/mark.svg" alt="" width="92" height="40" />
         <img class="footer__word" src="./brand/wordmark.svg" alt="WrapFinest" width="180" height="25" />
-        <p>Paint protection film, wraps, nano ceramic tint, glass armor and coating. Official Distributor of F1 Auto Films in Central Luzon.</p>
+        <p>Paint protection film, wraps, nano ceramic tint, glass armor, coating and Tesla accessories. Official Distributor of F1 Auto Films in Central Luzon and of JDC AI Auto Interesting in Pampanga.</p>
       </div>
       <div>
         <h3 class="mono">Visit</h3>
@@ -508,7 +623,7 @@
     </div>
     <div class="wrap footer__fine mono">
       <span>© <span id="year">2026</span> WrapFinest. All rights reserved.</span>
-      <span>Vehicle and demonstration footage are computer-generated illustrations of how the products work. WrapFinest is an independent shop and is not affiliated with any vehicle manufacturer. Product specifications from F1 Auto Films.</span>
+      <span>Vehicle and demonstration footage are computer-generated illustrations of how the products work. Accessories are aftermarket products from JDC AI Auto Interesting and Yofer; Tesla, Model 3 and Model Y are trademarks of Tesla, Inc. WrapFinest is an independent shop and is not affiliated with any vehicle manufacturer. Product specifications from F1 Auto Films.</span>
     </div>
   </footer>
 

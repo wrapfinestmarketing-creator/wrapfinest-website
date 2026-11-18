@@ -196,3 +196,15 @@ things a camera can't easily capture (slow-mo impacts, macro water, the 3D car).
 4. **Content sections** — work gallery, UGC, pricing, studio, quote form.
 5. **Polish** — mobile tuning, reduced-motion, SEO, performance pass, cross-browser QA.
 6. **Owner review** → revisions → launch (later: custom domain).
+
+---
+
+## 9. Tesla accessories (added)
+
+- WrapFinest is the **official JDC AI Auto Interesting distributor in Pampanga**. Body kit shown is by **Yofer**.
+- Scroll chapter "06 — Tesla Accessories": kit parts, kit fitting front and rear, dual-layer floor mats, sunroof shade.
+- Catalogue section `#accessories`: filter by Model YL / Y / 3 and category; "Add to inquiry" builds a list that is sent with the quote form (no checkout or payment). Data lives in `src/accessories.js`.
+- Prices are the JDC catalogue prices supplied by the owner. Body kit and Type 2 to GBT adapter are "price on request".
+- Claim wording: "JDC rates it to block up to 95% of sun heat and glare" (attributed to JDC, not measured by WrapFinest).
+- Not listed on purpose: replica Tesla emblems. JDC's own Pasay address and phone are not shown; WrapFinest contact details only.
+- Accessory footage uses the same red car as the rest of the site; real white-car installs appear as photos and two install videos.

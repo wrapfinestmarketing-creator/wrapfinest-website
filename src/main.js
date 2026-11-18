@@ -3,6 +3,7 @@ import Lenis from 'lenis';
 import { TINTS, FINISHES, SWATCHES, TINT_LAYERS, CONTACT } from './data.js';
 import { createStory } from './story.js';
 import { createFilm } from './film.js';
+import { initShop } from './shop.js';
 import manifest from './film-manifest.json';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -40,17 +41,20 @@ document.addEventListener('click', e => {
   const el = document.getElementById(a.getAttribute('href').slice(1)); if (!el) return;
   e.preventDefault();
   if (a.dataset.prefill) prefillService(a.dataset.prefill);
+  if (a.dataset.add) shop?.add(a.dataset.add, 'YL');
   scrollToEl(el);
 });
 
 /* ---------------- story + film ---------------- */
 const story = createStory($('#story'));
 const stageEl = $('#stage'), scrim = $('#scrim'), nav = $('#nav'), rail = $('#rail');
-const stageTag = $('#stageTag'), stageTagName = $('#stageTagName');
+const stageTag = $('#stageTag'), stageTagName = $('#stageTagName'), stageTagLogo = $('#stageTagLogo'), stageTagLabel = $('#stageTagLabel');
+const BRANDS = { f1: { logo: 'brand/f1-autofilms.webp', alt: 'F1 Auto Films', label: 'Film shown' }, jdc: { logo: 'brand/jdc.webp', alt: 'JDC AI Auto Interesting', label: 'Accessory shown' } };
+let shop = null;
 const ui = { filmBar: $('#filmBar'), filmPct: $('#filmPct'), healBar: $('#healBar'), healTxt: $('#healTxt'), layers: $('#layers') };
 let lastChapter = '', lastIndex = -1;
 // which media the next step needs, so it is already loading before the visitor gets there
-const NEEDS = { hero: ['hero'], film: ['ppf'], impact: ['impact'], heal: ['heal'], pcu: ['outro'], rain: ['rain'], monsoon: ['rain'], studio: ['finish-gloss', 'finish-satin', 'finish-onyx'], tint: ['tint-light', 'tint-dark'], layers: [], chipbare: ['chipbare'], wrapglass: ['wrapglass'], stones: ['stones'], roof: ['roof'], heat: ['heat-bare', 'heat-shield'], install: [], smash: ['smash'], exit: ['outro'] };
+const NEEDS = { hero: ['hero'], film: ['ppf'], impact: ['impact'], heal: ['heal'], pcu: ['outro'], rain: ['rain'], monsoon: ['rain'], studio: ['finish-gloss', 'finish-satin', 'finish-onyx'], tint: ['tint-light', 'tint-dark'], layers: [], chipbare: ['chipbare'], wrapglass: ['wrapglass'], stones: ['stones'], roof: ['roof'], heat: ['heat-bare', 'heat-shield'], install: [], smash: ['smash'], accintro: ['kit-parts'], kitfront: ['kitfront'], kitrear: ['kitrear'], mats: ['mats'], shade: ['shade'], exit: ['shade'] };
 
 function onScroll() {
   const y = window.scrollY;
@@ -63,7 +67,11 @@ function onScroll() {
   if (prod === 'studio') prod = sel.finish.f1 ? sel.finish.f1 : '';
   const tagOn = !!prod && s.active && sc.dim < 0.5 && !s.past;
   stageTag.classList.toggle('is-on', tagOn);
-  if (tagOn) { if (stageTagName.textContent !== prod) stageTagName.textContent = prod; stageTag.dataset.side = sc.side === 'R' ? 'R' : 'L'; }
+  if (tagOn) {
+    if (stageTagName.textContent !== prod) stageTagName.textContent = prod; stageTag.dataset.side = sc.side === 'R' ? 'R' : 'L';
+    const brand = s.step.el.dataset.brand || 'f1';
+    if (stageTag.dataset.brand !== brand) { const b = BRANDS[brand]; stageTag.dataset.brand = brand; stageTagLogo.src = BASE + b.logo; stageTagLogo.alt = b.alt; stageTagLabel.textContent = b.label; }
+  }
   nav.classList.toggle('is-solid', y > 40);
   rail.classList.toggle('is-off', s.past || sc.dim > 0.95);
   if (s.index !== lastIndex) { lastIndex = s.index; const nx = story.steps[s.index + 1], nn = story.steps[s.index + 2]; film?.preload([...(nx ? NEEDS[nx.key] : []), ...(nn ? NEEDS[nn.key] : [])]); }
@@ -71,7 +79,7 @@ function onScroll() {
   if (ch !== lastChapter) {
     lastChapter = ch;
     $$('[data-rail]').forEach(a => a.classList.toggle('is-current', a.dataset.rail === ch));
-    $$('.nav__links a').forEach(a => a.classList.toggle('is-current', a.getAttribute('href') === '#' + ({ ppf: 'ppf', ceramic: 'ppf', finish: 'finish', tint: 'tint', thermo: 'thermo' }[ch] || '_')));
+    $$('.nav__links a').forEach(a => a.classList.toggle('is-current', a.getAttribute('href') === '#' + ({ ppf: 'ppf', ceramic: 'ppf', finish: 'finish', tint: 'tint', thermo: 'thermo', acc: 'tesla' }[ch] || '_')));
   }
   // live readouts
   if (sc.meter != null) { ui.filmBar.style.transform = `scaleX(${sc.meter})`; ui.filmPct.textContent = Math.round(sc.meter * 100); }
@@ -175,16 +183,32 @@ function prefillService(name) { const c = $$('#quoteForm input[name="services"]'
     if (!ok) { status.classList.add('is-err'); status.textContent = 'Please fill in your name, mobile number and car.'; $('[aria-invalid="true"]', form)?.focus(); return; }
     if (form.elements._honey.value) return;
     const fd = new FormData(form), services = fd.getAll('services').join(', ') || 'Not specified';
-    const payload = { _subject: `Quote request: ${fd.get('vehicle')} (${fd.get('name')})`, _template: 'table', _captcha: 'false', Name: fd.get('name'), Mobile: fd.get('phone'), Email: fd.get('email') || '-', Vehicle: fd.get('vehicle'), Services: services, Selection: fd.get('selection') || '-', Message: fd.get('message') || '-' };
+    const payload = { _subject: `Quote request: ${fd.get('vehicle')} (${fd.get('name')})`, _template: 'table', _captcha: 'false', Name: fd.get('name'), Mobile: fd.get('phone'), Email: fd.get('email') || '-', Vehicle: fd.get('vehicle'), Services: services, Selection: fd.get('selection') || '-', Accessories: shop?.summary().text || '-', Message: fd.get('message') || '-' };
     const btn = $('button[type="submit"]', form); btn.disabled = true; btn.textContent = 'Sending…';
     try {
       const r = await fetch(CONTACT.formEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) });
       if (!r.ok) throw new Error(String(r.status));
-      status.classList.add('is-ok'); status.textContent = 'Request sent. We will reply during shop hours, 9AM to 6PM.'; form.reset(); updateSelectionField();
+      status.classList.add('is-ok'); status.textContent = 'Request sent. We will reply during shop hours, 9AM to 6PM.'; form.reset(); updateSelectionField(); shop?.clear();
     } catch {
       status.classList.add('is-err');
       status.innerHTML = `We could not send that just now. Please message us on <a href="${CONTACT.messenger}" target="_blank" rel="noopener"><u>Messenger</u></a> or call <a href="${CONTACT.phoneHref}"><u>${CONTACT.phone}</u></a>.`;
     } finally { btn.disabled = false; btn.textContent = 'Send request'; }
+  });
+})();
+/* ---------------- accessories shop ---------------- */
+(() => {
+  const box = $('#formCart'), list = $('#formCartList'), total = $('#formCartTotal'), copy = $('#formCartCopy');
+  const render = sum => {
+    box.hidden = !sum.count; list.innerHTML = '';
+    for (const l of sum.lines) { const li = document.createElement('li'); li.innerHTML = `<span>${l.label}</span><b>${l.priceText}</b><button type="button" aria-label="Remove ${l.name}">×</button>`; li.querySelector('button').onclick = () => shop.remove(l.id, l.model); list.append(li); }
+    total.textContent = sum.count ? `Estimated total ${sum.totalText}` : '';
+    if (sum.count) prefillService('Tesla accessories');
+  };
+  shop = initShop({ base: BASE, onChange: render });
+  copy.addEventListener('click', async () => {
+    const text = `Hi WrapFinest, I'd like to ask about these Tesla accessories:\n${shop.summary().text}`;
+    try { await navigator.clipboard.writeText(text); copy.textContent = 'Copied. Paste it in Messenger'; } catch { copy.textContent = 'Could not copy. Please send the form instead'; return; }
+    window.open(CONTACT.messenger, '_blank', 'noopener');
   });
 })();
 $('#year').textContent = new Date().getFullYear();

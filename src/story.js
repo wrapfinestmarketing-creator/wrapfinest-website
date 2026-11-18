@@ -24,7 +24,12 @@ export const KEYS = {
   heat: (p, c) => S('heat', [{ still: 'heat-bare', alpha: 1 }, { still: 'heat-shield', alpha: c.thermo }], { side: 'L', fx: 0.52, fy: 0.45 }),
   install: (p, c) => S('heat', [{ still: 'heat-bare', alpha: 1 }, { still: 'heat-shield', alpha: c.thermo }], { side: 'C', fx: 0.52, fy: 0.45, dim: 0.86 }),
   smash: p => S('smash', [{ seq: 'smash', t: clamp01(p * 1.05) }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.08 }),
-  exit: p => S('outro', [{ seq: 'outro', t: 0.35 + p * 0.65 }], { side: 'C', dim: smooth(0.35, 0.95, p) }),
+  accintro: p => S('accintro', [{ still: 'kit-parts', alpha: 1 }], { side: 'L', fx: 0.5, fy: 0.62, zoom: 1.04 + p * 0.1 }),
+  kitfront: p => S('kitfront', [{ seq: 'kitfront', t: clamp01((p - 0.06) / 0.8) }], { side: 'R', fx: 0.56, fy: 0.6 }),
+  kitrear: p => S('kitrear', [{ seq: 'kitrear', t: clamp01(p * 1.08) }], { side: 'L', fx: 0.72, fy: 0.55 }),
+  mats: p => S('mats', [{ seq: 'mats', t: clamp01((p - 0.06) / 0.8) }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.04 }),
+  shade: p => S('shade', [{ seq: 'shade', t: clamp01((p - 0.06) / 0.8) }], { side: 'R', fx: 0.5, fy: 0.42, zoom: 1.04 }),
+  exit: p => S('shade', [{ seq: 'shade', t: 1 }], { side: 'C', fx: 0.5, fy: 0.42, zoom: 1.04, dim: smooth(0.1, 0.8, p) }),
 };
 
 export function createStory(root) {
