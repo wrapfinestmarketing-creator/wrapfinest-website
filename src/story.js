@@ -4,7 +4,15 @@ const smooth = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t
 
 // side: where the text panel sits (L/R/C). The car is anchored to the opposite side on desktop.
 // fx/fy: the point of the picture that should stay in view (0..1). zoom: extra scale over "cover".
+// fit: this share of the picture's width must stay visible (360 views); keep: share of the screen the text panel needs.
 const S = (key, layers, o = {}) => ({ key, layers, side: 'L', fx: 0.5, fy: 0.55, zoom: 1.06, over: 0.12, dim: 0, ...o });
+
+// The tint car: a 360 view or a top view with live tinted glass, or two still pictures cross-faded as the fallback.
+const tintScene = (c, o) => !c.tspin
+  ? S('tint', [{ still: 'tint-light', alpha: 1 }, { still: 'tint-dark', alpha: c.tint }], { fx: 0.56, fy: 0.42, zoom: 1.5, ...o })
+  : c.tview === 'top'
+    ? S('tint:top', [{ seq: 'ttop', t: 0, tint: c.tints }], { fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.9, keep: 0.36, ...o })
+    : S('tint:360', [{ seq: 'tspin', t: c.tangle, loop: true, tint: c.tints }], { fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.84, keep: 0.36, ...o });
 
 export const KEYS = {
   hero: (p, c) => S('hero', [{ seq: 'hero', t: clamp01((p - 0.5) * 2) * 0.92 + c.idle }], { side: 'L', fx: 0.5, fy: 0.55, zoom: 1.02, over: 0.17 }),
@@ -17,8 +25,8 @@ export const KEYS = {
   studio: (p, c) => c.spin
     ? S('finish:' + c.finish, [{ seq: 'spin', t: c.angle, loop: true, paint: c.paint }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.84, transition: 'wipe' })
     : S('finish:' + c.finish, [{ still: c.finish, alpha: 1 }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.04, transition: 'wipe' }),
-  tint: (p, c) => S('tint', [{ still: 'tint-light', alpha: 1 }, { still: 'tint-dark', alpha: c.tint }], { side: 'R', fx: 0.56, fy: 0.42, zoom: 1.5 }),
-  layers: (p, c) => S('tint', [{ still: 'tint-light', alpha: 1 }, { still: 'tint-dark', alpha: c.tint }], { side: 'C', fx: 0.56, fy: 0.42, zoom: 1.5, dim: 0.84 }),
+  tint: (p, c) => tintScene(c, { side: 'R' }),
+  layers: (p, c) => tintScene(c, { side: 'C', dim: 0.84 }),
   chipbare: p => S('chipbare', [{ seq: 'chipbare', t: clamp01(p * 1.05) }], { side: 'L', fx: 0.5, fy: 0.45 }),
   wrapglass: p => S('wrapglass', [{ seq: 'wrapglass', t: clamp01((p - 0.04) / 0.86) }], { side: 'R', fx: 0.5, fy: 0.45 }),
   stones: p => S('stones', [{ seq: 'stones', t: clamp01(p * 1.05) }], { side: 'L', fx: 0.5, fy: 0.45 }),

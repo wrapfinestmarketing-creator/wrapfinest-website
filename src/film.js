@@ -7,13 +7,13 @@
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const pad = n => String(n).padStart(4, '0');
 
-export function createFilm({ canvas, base, manifest, reducedMotion, painter }) {
+export function createFilm({ canvas, base, manifest, reducedMotion, painter, tinter }) {
   const ctx = canvas.getContext('2d', { alpha: false });
   const snap = document.createElement('canvas'), sctx = snap.getContext('2d', { alpha: false });
   const isMobile = matchMedia('(max-width: 760px)').matches;
   const variant = isMobile ? 'm' : 'd';
   const seqs = {}, stills = {};
-  for (const [name, s] of Object.entries(manifest.seqs)) seqs[name] = { n: s.n, frames: new Array(s.n).fill(null), asked: new Uint8Array(s.n), loaded: 0, waiters: [], plate: s.plate ? null : undefined, rect: s.rect };
+  for (const [name, s] of Object.entries(manifest.seqs)) seqs[name] = { n: s.n, frames: new Array(s.n).fill(null), asked: new Uint8Array(s.n), loaded: 0, waiters: [], plate: s.plate ? null : undefined, rect: s.rect, zones: s.zones ? null : undefined, grid: s.zones, at: 0 };
 
   // ---------- loading (coarse-to-fine so scrubbing works early) ----------
   const queue = []; let active = 0; const MAX = isMobile ? 4 : 8;
@@ -23,6 +23,7 @@ export function createFilm({ canvas, base, manifest, reducedMotion, painter }) {
   function loadSeq(name, front = false) {
     const s = seqs[name]; if (!s || s.started) return; s.started = true;
     if (s.plate === null) loadImage(`${base}film/${name}/${variant}/plate.webp`).then(img => { s.plate = img; dirty = true; }).catch(() => {});   // the background its cut-out frames sit on
+    if (s.zones === null) loadImage(`${base}film/${name}/${variant}/zones.webp`).then(img => { s.zones = img; dirty = true; }).catch(() => {});   // which window is which (tint)
     const jobs = order(s.n).map(i => () => loadImage(`${base}film/${name}/${variant}/${pad(i + 1)}.webp`).then(img => { s.frames[i] = img; s.loaded++; dirty = true; s.waiters = s.waiters.filter(w => (s.loaded >= w.min ? (w.res(), false) : true)); }).catch(() => { s.loaded++; }));
     if (front) queue.unshift(...jobs); else queue.push(...jobs); pump();
   }
@@ -35,11 +36,11 @@ export function createFilm({ canvas, base, manifest, reducedMotion, painter }) {
     const s = seqs[name]; if (!s) return null;
     if (loop) {                                                   // t counts whole turns; frame 0 follows the last frame
       const f = ((Math.round(t * s.n) % s.n) + s.n) % s.n;
-      for (let d = 0; d <= s.n >> 1; d++) { const a = s.frames[(f - d + s.n) % s.n]; if (a) return a; const b = s.frames[(f + d) % s.n]; if (b) return b; }
+      for (let d = 0; d <= s.n >> 1; d++) { const i = (f - d + s.n) % s.n, j = (f + d) % s.n; if (s.frames[i]) { s.at = i; return s.frames[i]; } if (s.frames[j]) { s.at = j; return s.frames[j]; } }
       return null;
     }
     const f = clamp(Math.round(t * (s.n - 1)), 0, s.n - 1);
-    for (let d = 0; d < s.n; d++) { if (f - d >= 0 && s.frames[f - d]) return s.frames[f - d]; if (f + d < s.n && s.frames[f + d]) return s.frames[f + d]; }
+    for (let d = 0; d < s.n; d++) { if (f - d >= 0 && s.frames[f - d]) { s.at = f - d; return s.frames[f - d]; } if (f + d < s.n && s.frames[f + d]) { s.at = f + d; return s.frames[f + d]; } }
     return null;
   }
 
@@ -65,7 +66,7 @@ export function createFilm({ canvas, base, manifest, reducedMotion, painter }) {
       return { x: W / 2 - cur.fx * w, y, w, h, band: Math.min(top + bandH, y + h), soft: true, clip: [0, top, W, bandH] };
     }
     if (fit) {
-      const l = target.side === 'L' ? 0.25 : 0, r = target.side === 'R' ? 0.25 : 0, room = W * (1 - l - r);   // the text panel keeps a quarter
+      const kp = target.keep ?? 0.25, l = target.side === 'L' ? kp : 0, r = target.side === 'R' ? kp : 0, room = W * (1 - l - r);   // the text panel keeps its share
       const s = Math.min(Math.max(W / iw, H / ih) * cur.zoom, room / (iw * fit)), w = iw * s, h = ih * s;
       const x = W * (l + (1 - l - r) / 2) - cur.fx * w - px * 10 * dpr;
       const y = h >= H ? clamp(0.52 * H - cur.fy * h - py * 6 * dpr, H - h, 0) : (H - h) * 0.5;
@@ -90,6 +91,7 @@ export function createFilm({ canvas, base, manifest, reducedMotion, painter }) {
     for (const L of target.layers) {
       let img = L.seq ? frameOf(L.seq, cur.t[L.seq] ?? L.t, L.loop) : stills[L.still]?.img; if (!img) continue;
       if (L.paint && painter) { img = painter.render(img, L.paint, seqs[L.seq].plate, seqs[L.seq].rect); if (!img) continue; }
+      if (L.tint && tinter) { const s = seqs[L.seq]; img = tinter.render(img, L.tint, s.plate, s.rect, s.zones, s.grid, s.at); if (!img) continue; }
       const a = L.still ? (cur.alpha[L.still] ?? L.alpha ?? 1) : 1; if (a <= 0.003) continue;
       const r = place(img); ctx.globalAlpha = drew ? a : 1; if (r.clip) { ctx.save(); ctx.beginPath(); ctx.rect(...r.clip); ctx.clip(); } ctx.drawImage(img, r.x, r.y, r.w, r.h); if (r.clip) ctx.restore(); band = r.band; drew = true; edge = r;
     }

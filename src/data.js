@@ -1,15 +1,21 @@
 // Single source of truth for product facts shown on the site.
 // Every number here comes from the approved creative brief (docs/CREATIVE-BRIEF.md).
 
+// `film` is what the film lets through as seen from outside (red, green, blue): Artic70 is the clear blue one.
 export const TINTS = [
-  { id: 'SD5', name: 'Nitro SD5', shade: 'Super Dark', vlt: 5, irr: 99, uvr: 99, tser: 97.2 },
-  { id: 'VD10', name: 'Nitro VD10', shade: 'Very Dark', vlt: 14, irr: 99, uvr: 99, tser: 93.1 },
-  { id: 'MD20', name: 'Nitro MD20', shade: 'Medium Dark', vlt: 23, irr: 98, uvr: 99, tser: 89.3 },
-  { id: 'M35', name: 'Nitro M35', shade: 'Medium', vlt: 36, irr: 99, uvr: 99, tser: 83.6 },
-  { id: 'LM40', name: 'Nitro LM40', shade: 'Light Medium', vlt: 41, irr: 99, uvr: 99, tser: 81.6 },
-  { id: 'L50', name: 'Nitro L50', shade: 'Light', vlt: 45, irr: 99, uvr: 99, tser: 79.6 },
-  { id: 'VL60', name: 'Nitro VL60', shade: 'Very Light', vlt: 62, irr: 99, uvr: 99, tser: 72.2 },
-  { id: 'A70', name: 'Nitro Artic70', shade: 'Clear Blue', vlt: 76, irr: 98, uvr: 99, tser: 65.5 },
+  { id: 'SD5', name: 'Nitro SD5', shade: 'Super Dark', vlt: 5, irr: 99, uvr: 99, tser: 97.2, film: [0.065, 0.07, 0.078] },
+  { id: 'VD10', name: 'Nitro VD10', shade: 'Dark', vlt: 10, irr: 99, uvr: 99, tser: 93.1, film: [0.13, 0.136, 0.146] },
+  { id: 'MD20', name: 'Nitro MD20', shade: 'Medium Dark', vlt: 20, irr: 98, uvr: 99, tser: 89.3, film: [0.24, 0.248, 0.262] },
+  { id: 'M35', name: 'Nitro M35', shade: 'Medium Light', vlt: 35, irr: 99, uvr: 99, tser: 83.6, film: [0.4, 0.412, 0.432] },
+  { id: 'A70', name: 'Nitro Artic70', shade: 'Clear Blue', vlt: 70, irr: 98, uvr: 99, tser: 65.5, film: [0.6, 0.79, 0.98] },
+];
+// The glass a visitor can tint, in the order the tint shader numbers it (src/tint.js), with the film each starts on.
+export const GLASS = [
+  { id: 'w', name: 'Windshield', short: 'Windshield', film: 'A70' },
+  { id: 'f', name: 'Front doors', short: 'Front', film: 'M35' },
+  { id: 'r', name: 'Rear doors', short: 'Rear', film: 'MD20' },
+  { id: 'k', name: 'Rear glass', short: 'Rear glass', film: 'MD20' },
+  { id: 'o', name: 'Roof', short: 'Roof', film: 'VD10' },
 ];
 
 // Finish Studio: one 360 set of frames, repainted live (src/paint.js). `paint` is the recipe:

@@ -1,9 +1,10 @@
 import './styles.css';
 import Lenis from 'lenis';
-import { TINTS, FINISHES, SWATCHES, TINT_LAYERS, CONTACT } from './data.js';
+import { TINTS, GLASS, FINISHES, SWATCHES, TINT_LAYERS, CONTACT } from './data.js';
 import { createStory } from './story.js';
 import { createFilm } from './film.js';
 import { createPainter } from './paint.js';
+import { createTinter } from './tint.js';
 import { initShop } from './shop.js';
 import { createLightbox } from './lightbox.js';
 import manifest from './film-manifest.json';
@@ -17,7 +18,8 @@ const params = new URLSearchParams(location.search);
 
 // live state the story reads on every scroll tick
 const ctx = { thermo: 1, tint: 0.64, finish: 'finish-gloss', idle: 0, get mobile() { return isMobile(); },
-  spin: false, angle: 0, paint: FINISHES[0].paint };            // 360 view: on/off, turns (1 = full turn), live paint recipe
+  spin: false, angle: 0, paint: FINISHES[0].paint,              // 360 view: on/off, turns (1 = full turn), live paint recipe
+  tspin: false, tangle: 0, tview: '360', tints: { key: '', rgb: new Float32Array(15).fill(1) } };   // tint car: on/off, turns, 360 or top view, film per glass
 let film = null;
 
 /* ---------------- preloader ---------------- */
@@ -87,7 +89,8 @@ function onScroll() {
   // live readouts
   if (sc.meter != null) { ui.filmBar.style.transform = `scaleX(${sc.meter})`; ui.filmPct.textContent = Math.round(sc.meter * 100); }
   if (sc.heal != null) { ui.healBar.style.transform = `scaleX(${sc.heal})`; ui.healTxt.textContent = sc.heal > 0.97 ? 'Healed' : sc.heal > 0.05 ? 'Healing…' : 'Scratched'; }
-  if (s.step.key === 'studio' && s.active) spinIntro();
+  if (s.step.key === 'studio' && s.active) studioSpin.intro();
+  if (s.step.key === 'tint' && s.active) { tintSpin.intro(); if (ctx.tspin) film?.preload(['ttop']); }
   if (s.step.key === 'layers') ui.layers.style.setProperty('--spread', Math.min(1, Math.max(0, (s.p - 0.08) / 0.45)).toFixed(3));
 }
 window.addEventListener('scroll', onScroll, { passive: true });
@@ -102,10 +105,12 @@ if (!reducedMotion && !params.has('still')) {
 
 /* ---------------- finish studio ---------------- */
 const chipsEl = $('#finishChips'), swEl = $('#swatches'), blurbEl = $('#finishBlurb'), productEl = $('#finishProduct'), selInput = $('#formSelection');
-const sel = { finish: FINISHES[0], swatch: SWATCHES[0], tint: TINTS[3] };
+const filmOf = id => TINTS.find(t => t.id === id);
+const sel = { finish: FINISHES[0], swatch: SWATCHES[0], glass: 'w', tints: Object.fromEntries(GLASS.map(g => [g.id, filmOf(g.film)])) };
 function updateSelectionField() {
   const f = sel.finish.swatches ? `${sel.finish.label}: ${sel.swatch.name}` : `${sel.finish.label} (${sel.finish.product})`;
-  selInput.value = `${f} · Tint ${sel.tint.name} ${sel.tint.vlt}% VLT`;
+  const films = GLASS.map(g => sel.tints[g.id]), same = films.every(t => t === films[0]);
+  selInput.value = `${f} · Tint ` + (same ? `${films[0].name} ${films[0].vlt}% VLT on all glass` : GLASS.map(g => `${g.name} ${sel.tints[g.id].vlt}%`).join(', '));
 }
 function applyFinish() {
   const f = sel.finish;
@@ -120,85 +125,136 @@ SWATCHES.forEach(s => { const b = document.createElement('button'); b.type = 'bu
 $$('.chip', chipsEl)[0].setAttribute('aria-checked', 'true');
 $('#quoteFinish').addEventListener('click', () => prefillService(sel.finish.service));
 
-/* ---------------- 360 view ---------------- */
-// The studio car can be turned by dragging (mouse or finger), with the arrow keys, or it turns once by itself on first view.
-const spinPad = $('#spinPad');
-const SPIN_DIR = 1;                                              // +1: dragging right turns the car's near side to the right
+/* ---------------- 360 views ---------------- */
+// A car on a turntable: turned by dragging (mouse or finger) or with the arrow keys; it turns once by itself on first view.
 const VIEW_NAMES = ['Side view', 'Front three-quarter view', 'Front view', 'Front three-quarter view, other side', 'Other side view', 'Rear three-quarter view', 'Rear view', 'Rear three-quarter view, other side'];
-const spin = { drag: null, v: 0, raf: 0, intro: 0 };            // intro: 0 not played, 1 playing, 2 done
-function setAngle(a) {
-  ctx.angle = a;
-  const deg = Math.round((((a % 1) + 1) % 1) * 360) % 360;
-  spinPad.setAttribute('aria-valuenow', String(deg)); spinPad.setAttribute('aria-valuetext', VIEW_NAMES[Math.round(deg / 45) % 8]);
-  onScroll();
-}
-function spinStop() { cancelAnimationFrame(spin.raf); spin.raf = 0; spin.v = 0; if (spin.intro === 1) spin.intro = 2; }
-function spinCoast() {                                           // keep turning a little after the finger lifts
-  let last = performance.now();
-  const step = now => {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    spin.v *= Math.exp(-dt * 3.2);
-    if (Math.abs(spin.v) < 0.015) { spin.raf = 0; return; }
-    setAngle(ctx.angle + spin.v * dt); spin.raf = requestAnimationFrame(step);
-  };
-  spin.raf = requestAnimationFrame(step);
-}
-function spinIntro() {                                           // one slow turn the first time the studio is seen
-  if (spin.intro || !ctx.spin || reducedMotion || params.has('still')) return;
-  if ((film?.seqLoaded('spin') ?? 0) < 1) return;                // wait until every angle is loaded
-  spin.intro = 1; const t0 = performance.now(), a0 = ctx.angle, DUR = 3400;
-  const step = now => {
-    if (spin.intro !== 1) return;
-    const t = Math.min(1, (now - t0) / DUR), e = t * t * (3 - 2 * t);
-    setAngle(a0 + e); if (t < 1) spin.raf = requestAnimationFrame(step); else { spin.intro = 2; spin.raf = 0; }
-  };
-  spin.raf = requestAnimationFrame(step);
-}
-spinPad.addEventListener('pointerdown', e => {
-  if (e.button > 0 || !ctx.spin) return;
-  spinStop(); spin.intro = 2;
-  const touch = e.pointerType === 'touch';
-  spin.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, a: ctx.angle, lx: e.clientX, lt: e.timeStamp, on: !touch, per: Math.max(520, spinPad.clientWidth * 0.9) };
-  if (!touch) { spinPad.setPointerCapture(e.pointerId); spinPad.classList.add('is-dragging'); e.preventDefault(); spinPad.focus({ preventScroll: true }); }
-});
-spinPad.addEventListener('pointermove', e => {
-  const d = spin.drag; if (!d || d.id !== e.pointerId) return;
-  const dx = e.clientX - d.x, dy = e.clientY - d.y;
-  if (!d.on) {                                                   // touch: a mostly-sideways move turns the car, anything else scrolls the page
-    if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(dy)) return;
-    d.on = true; d.x = e.clientX; d.a = ctx.angle; spinPad.setPointerCapture(e.pointerId); spinPad.classList.add('is-dragging'); return;
+const SPIN_DIR = 1;                                              // +1: dragging right turns the car's near side to the right
+function createSpin({ pad, seq, on, get, set }) {
+  const spin = { drag: null, v: 0, raf: 0, intro: 0 };          // intro: 0 not played, 1 playing, 2 done
+  function setAngle(a) {
+    set(a);
+    const deg = Math.round((((a % 1) + 1) % 1) * 360) % 360;
+    pad.setAttribute('aria-valuenow', String(deg)); pad.setAttribute('aria-valuetext', VIEW_NAMES[Math.round(deg / 45) % 8]);
+    onScroll();
   }
-  const dt = Math.max(1, e.timeStamp - d.lt) / 1000, inst = SPIN_DIR * (e.clientX - d.lx) / d.per / dt;
-  spin.v += (inst - spin.v) * Math.min(1, dt * 18); d.lx = e.clientX; d.lt = e.timeStamp;
-  spinPad.classList.add('is-used');
-  setAngle(d.a + SPIN_DIR * dx / d.per);
-});
-const spinEnd = e => {
-  const d = spin.drag; if (!d || d.id !== e.pointerId) return;
-  spin.drag = null; spinPad.classList.remove('is-dragging');
-  if (d.on && e.type === 'pointerup' && e.timeStamp - d.lt < 90 && Math.abs(spin.v) > 0.05 && !reducedMotion) spinCoast(); else spin.v = 0;
-};
-spinPad.addEventListener('pointerup', spinEnd);
-spinPad.addEventListener('pointercancel', spinEnd);
-spinPad.addEventListener('keydown', e => {
-  const step = { ArrowRight: 1 / 24, ArrowLeft: -1 / 24, PageUp: 0.25, PageDown: -0.25 }[e.key];
-  if (e.key === 'Home') { e.preventDefault(); spinStop(); spin.intro = 2; setAngle(0); return; }
-  if (!step || !ctx.spin) return;
-  e.preventDefault(); spinStop(); spin.intro = 2; spinPad.classList.add('is-used'); setAngle(ctx.angle + step);
-});
-
-/* ---------------- tint slider ---------------- */
-const tintUI = { range: $('#tintRange'), name: $('#tintName'), shade: $('#tintShade'), vlt: $('#tintVlt'), irr: $('#tintIrr'), uvr: $('#tintUvr'), tser: $('#tintTser'), heat: $('#tintHeat') };
-function applyTint() {
-  const t = TINTS[+tintUI.range.value]; sel.tint = t;
-  tintUI.name.textContent = t.name; tintUI.shade.textContent = t.shade; tintUI.vlt.textContent = t.vlt;
-  tintUI.irr.textContent = t.irr; tintUI.uvr.textContent = t.uvr; tintUI.tser.textContent = t.tser;
-  tintUI.heat.style.transform = `scaleX(${Math.max(0.04, (100 - t.tser) / 100)})`;
-  tintUI.range.setAttribute('aria-valuetext', `${t.name}, ${t.shade}, ${t.vlt}% VLT`);
-  ctx.tint = Math.pow(1 - (t.vlt - 5) / 71, 0.8);          // 5% VLT = fully dark still, 76% = light still
-  updateSelectionField(); onScroll();
+  function stop() { cancelAnimationFrame(spin.raf); spin.raf = 0; spin.v = 0; if (spin.intro === 1) spin.intro = 2; }
+  function coast() {                                             // keep turning a little after the finger lifts
+    let last = performance.now();
+    const step = now => {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      spin.v *= Math.exp(-dt * 3.2);
+      if (Math.abs(spin.v) < 0.015) { spin.raf = 0; return; }
+      setAngle(get() + spin.v * dt); spin.raf = requestAnimationFrame(step);
+    };
+    spin.raf = requestAnimationFrame(step);
+  }
+  function intro() {                                             // one slow turn the first time the car is seen
+    if (spin.intro || !on() || reducedMotion || params.has('still')) return;
+    if ((film?.seqLoaded(seq) ?? 0) < 1) return;                 // wait until every angle is loaded
+    spin.intro = 1; const t0 = performance.now(), a0 = get(), DUR = 3400;
+    const step = now => {
+      if (spin.intro !== 1) return;
+      const t = Math.min(1, (now - t0) / DUR), e = t * t * (3 - 2 * t);
+      setAngle(a0 + e); if (t < 1) spin.raf = requestAnimationFrame(step); else { spin.intro = 2; spin.raf = 0; }
+    };
+    spin.raf = requestAnimationFrame(step);
+  }
+  pad.addEventListener('pointerdown', e => {
+    if (e.button > 0 || !on()) return;
+    stop(); spin.intro = 2;
+    const touch = e.pointerType === 'touch';
+    spin.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, a: get(), lx: e.clientX, lt: e.timeStamp, on: !touch, per: Math.max(520, pad.clientWidth * 0.9) };
+    if (!touch) { pad.setPointerCapture(e.pointerId); pad.classList.add('is-dragging'); e.preventDefault(); pad.focus({ preventScroll: true }); }
+  });
+  pad.addEventListener('pointermove', e => {
+    const d = spin.drag; if (!d || d.id !== e.pointerId) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (!d.on) {                                                 // touch: a mostly-sideways move turns the car, anything else scrolls the page
+      if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(dy)) return;
+      d.on = true; d.x = e.clientX; d.a = get(); pad.setPointerCapture(e.pointerId); pad.classList.add('is-dragging'); return;
+    }
+    const dt = Math.max(1, e.timeStamp - d.lt) / 1000, inst = SPIN_DIR * (e.clientX - d.lx) / d.per / dt;
+    spin.v += (inst - spin.v) * Math.min(1, dt * 18); d.lx = e.clientX; d.lt = e.timeStamp;
+    pad.classList.add('is-used');
+    setAngle(d.a + SPIN_DIR * dx / d.per);
+  });
+  const end = e => {
+    const d = spin.drag; if (!d || d.id !== e.pointerId) return;
+    spin.drag = null; pad.classList.remove('is-dragging');
+    if (d.on && e.type === 'pointerup' && e.timeStamp - d.lt < 90 && Math.abs(spin.v) > 0.05 && !reducedMotion) coast(); else spin.v = 0;
+  };
+  pad.addEventListener('pointerup', end);
+  pad.addEventListener('pointercancel', end);
+  pad.addEventListener('keydown', e => {
+    if (!on()) return;
+    if (e.key === 'Home') { e.preventDefault(); stop(); spin.intro = 2; setAngle(0); return; }
+    const step = { ArrowRight: 1 / 24, ArrowLeft: -1 / 24, PageUp: 0.25, PageDown: -0.25 }[e.key];
+    if (!step) return;
+    e.preventDefault(); stop(); spin.intro = 2; pad.classList.add('is-used'); setAngle(get() + step);
+  });
+  return { setAngle, intro, stop };
 }
-tintUI.range.addEventListener('input', applyTint);
+const studioSpin = createSpin({ pad: $('#spinPad'), seq: 'spin', on: () => ctx.spin, get: () => ctx.angle, set: a => { ctx.angle = a; } });
+const tintSpin = createSpin({ pad: $('#tspinPad'), seq: 'tspin', on: () => ctx.tspin && ctx.tview === '360', get: () => ctx.tangle, set: a => { ctx.tangle = a; } });
+
+/* ---------------- tint: a film for each glass ---------------- */
+const tintUI = { box: $('#tintBox'), glass: $('#tintGlass'), films: $('#tintFilms'), views: $('#tintViews'), spin: $('#tspin'),
+  name: $('#tintName'), shade: $('#tintShade'), vlt: $('#tintVlt'), irr: $('#tintIrr'), uvr: $('#tintUvr'), tser: $('#tintTser'), heat: $('#tintHeat') };
+const tintNow = new Float32Array(15).fill(1); let tintRaf = 0, tintTick = 0;
+const tintGoal = () => GLASS.flatMap(g => sel.tints[g.id].film);
+function tintGlide(jump) {                                       // the glass darkens or clears over a moment instead of snapping
+  cancelAnimationFrame(tintRaf);
+  const goal = tintGoal(); let last = performance.now();
+  const step = now => {
+    const k = jump || reducedMotion ? 1 : 1 - Math.exp(-Math.min(0.05, (now - last) / 1000) * 9); last = now; let far = false;
+    for (let i = 0; i < 15; i++) { tintNow[i] += (goal[i] - tintNow[i]) * k; if (Math.abs(goal[i] - tintNow[i]) > 0.002) far = true; else tintNow[i] = goal[i]; }
+    ctx.tints = { key: String(++tintTick), rgb: tintNow };
+    onScroll(); if (far) tintRaf = requestAnimationFrame(step);
+  };
+  step(last);
+}
+function setTintView(v) {
+  ctx.tview = v; tintSpin.stop();
+  $$('.chip', tintUI.views).forEach(b => b.setAttribute('aria-checked', String(b.dataset.view === v)));
+  tintUI.spin.classList.toggle('is-top', v === 'top'); onScroll();
+}
+function applyTint(jump) {
+  const films = GLASS.map(g => sel.tints[g.id]), all = sel.glass === 'all';
+  const shown = all ? (films.every(t => t === films[0]) ? films[0] : null) : sel.tints[sel.glass];
+  $$('button', tintUI.glass).forEach(b => {
+    b.setAttribute('aria-checked', String(b.dataset.id === sel.glass));
+    if (b.dataset.id !== 'all') $('b', b).textContent = sel.tints[b.dataset.id].vlt;
+  });
+  $$('button', tintUI.films).forEach(b => b.setAttribute('aria-checked', String(!!shown && b.dataset.id === shown.id)));
+  const avg = k => films.reduce((n, t) => n + t[k], 0) / films.length, r1 = n => Math.round(n * 10) / 10;
+  tintUI.name.textContent = shown ? shown.name : 'F1 Nitro'; tintUI.shade.textContent = shown ? shown.shade : 'Mixed shades';
+  tintUI.vlt.textContent = shown ? shown.vlt : '5–70';
+  tintUI.irr.textContent = shown ? shown.irr : Math.round(avg('irr')); tintUI.uvr.textContent = shown ? shown.uvr : Math.round(avg('uvr')); tintUI.tser.textContent = shown ? shown.tser : r1(avg('tser'));
+  tintUI.heat.style.transform = `scaleX(${Math.max(0.04, (100 - (shown ? shown.tser : avg('tser'))) / 100)})`;
+  ctx.tint = Math.pow(1 - (avg('vlt') - 5) / 65, 0.8);           // fallback pictures: 5% VLT = the dark one, 70% = the light one
+  updateSelectionField(); tintGlide(jump);
+}
+function initTint() {
+  const simple = !ctx.tspin;                                     // no live glass: one shade for the whole car
+  tintUI.box.classList.toggle('tint--simple', simple); tintUI.views.hidden = simple; tintUI.spin.hidden = simple;
+  if (simple) { sel.glass = 'all'; for (const g of GLASS) sel.tints[g.id] = filmOf('M35'); $('#tintIntro').textContent = 'F1 Nitro rejects up to 99% of infrared heat with zero signal loss. Choose a shade to see it on the car.'; }
+  for (const g of [...GLASS, { id: 'all', name: 'All glass' }]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'gchip'; b.role = 'radio'; b.dataset.id = g.id;
+    b.innerHTML = g.id === 'all' ? `<span>${g.name}</span>` : `<span>${g.name}</span><b></b>`;
+    b.onclick = () => { sel.glass = g.id; if (ctx.tspin && g.id === 'o' && ctx.tview !== 'top') setTintView('top'); applyTint(); };
+    tintUI.glass.append(b);
+  }
+  for (const t of TINTS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'fchip'; b.role = 'radio'; b.dataset.id = t.id;
+    b.style.setProperty('--f', `rgb(${t.film.map(v => Math.round(40 + v * 200)).join(',')})`);
+    b.setAttribute('aria-label', `${t.shade}, ${t.vlt}% VLT, ${t.name}`);
+    b.innerHTML = `<i></i><b>${t.vlt}</b><span>${t.shade}</span>`;
+    b.onclick = () => { for (const g of GLASS) if (sel.glass === 'all' || sel.glass === g.id) sel.tints[g.id] = t; applyTint(); };
+    tintUI.films.append(b);
+  }
+  $$('.chip', tintUI.views).forEach(b => { b.onclick = () => setTintView(b.dataset.view); });
+  applyTint(true);
+}
 
 /* 9-layer stack */
 (() => {
@@ -298,12 +354,16 @@ $('#year').textContent = new Date().getFullYear();
 
 /* ---------------- boot ---------------- */
 async function boot() {
-  story.measure(); applyTint(); updateSelectionField(); setProgress(0.04);
+  story.measure(); setProgress(0.04);
   // the 360 studio needs the frames and a GPU; without either the studio falls back to its still pictures
   const painter = manifest.seqs.spin && !params.has('nospin') ? createPainter() : null;
   ctx.spin = !!painter; $('#spin').hidden = !ctx.spin; if (ctx.spin) NEEDS.studio = ['spin'];
-  film = createFilm({ canvas: $('#film'), base: BASE, manifest, reducedMotion, painter });
-  window.__wf = { film, story, onScroll, ctx, setAngle, painter };
+  // the same goes for the tint car: 360 and top view with a film per glass, or the old two still pictures
+  const tinter = manifest.seqs.tspin && manifest.seqs.ttop && !params.has('nospin') ? createTinter() : null;
+  ctx.tspin = !!tinter; if (ctx.tspin) NEEDS.tint = ['tspin', 'ttop'];
+  initTint(); updateSelectionField();
+  film = createFilm({ canvas: $('#film'), base: BASE, manifest, reducedMotion, painter, tinter });
+  window.__wf = { film, story, onScroll, ctx, setAngle: studioSpin.setAngle, setTintAngle: tintSpin.setAngle, painter, tinter };
   // show the page once the hero is scrubbable; everything else streams in behind
   const heroN = manifest.seqs.hero?.n || 0, need = Math.min(heroN, 12);
   let done = 0; const bump = () => setProgress(0.04 + 0.9 * Math.min(1, ++done / Math.max(1, need)));

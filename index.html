@@ -230,17 +230,27 @@
 
       <!-- 04 TINT -->
       <section class="step step--tall" id="tint" data-step="tint" data-product="Nitro · 9-layer nano ceramic tint" data-chapter="tint">
+        <div class="spin spin--left" id="tspin" hidden>
+          <div class="spin__pad" id="tspinPad" role="slider" tabindex="0" aria-label="Rotate the car" aria-valuemin="0" aria-valuemax="360" aria-valuenow="0" aria-valuetext="Side view">
+            <p class="spin__hint mono" aria-hidden="true"><svg width="44" height="18" viewBox="0 0 44 18" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="22" cy="9" rx="20" ry="7"/><path d="M6 3 2 9l6 1"/></svg><span>Drag to rotate</span><b>360°</b></p>
+          </div>
+        </div>
         <div class="panel panel--right panel--tint">
           <p class="chapter mono">04 — Nano Ceramic Tint</p>
           <h2 class="title">Nine layers between you and a 60° cabin.</h2>
-          <p>F1 Nitro rejects up to 99% of infrared heat with zero signal loss. Drag to try every shade.</p>
-          <div class="tint">
-            <div class="tint__head">
-              <div><span class="mono" id="tintName">Nitro M35</span><strong id="tintShade">Medium</strong></div>
-              <div class="tint__vlt"><b id="tintVlt">36</b><span>% VLT</span></div>
+          <p id="tintIntro">F1 Nitro rejects up to 99% of infrared heat with zero signal loss. Choose a shade for each glass, then turn the car.</p>
+          <div class="tint" id="tintBox">
+            <div class="tint__row">
+              <p class="tint__step mono"><b>1</b>Choose the glass</p>
+              <div class="tint__views" id="tintViews" role="radiogroup" aria-label="View" hidden>
+                <button type="button" class="chip" role="radio" data-view="360" aria-checked="true">360°</button>
+                <button type="button" class="chip" role="radio" data-view="top" aria-checked="false">Top view</button>
+              </div>
             </div>
-            <input class="tint__range" id="tintRange" type="range" min="0" max="7" step="1" value="3" aria-label="Tint shade" />
-            <div class="tint__ticks mono" aria-hidden="true"><span>Darkest</span><span>Lightest</span></div>
+            <div class="tint__glass" id="tintGlass" role="radiogroup" aria-label="Glass"></div>
+            <p class="tint__step mono"><b>2</b>Choose the shade <span>· VLT = light let through</span></p>
+            <div class="tint__films" id="tintFilms" role="radiogroup" aria-label="Film shade"></div>
+            <p class="tint__head mono"><span id="tintName">Nitro M35</span><strong id="tintShade">Medium Light</strong><span class="tint__vlt"><b id="tintVlt">35</b>% VLT</span></p>
             <dl class="tint__specs">
               <div><dt>IR rejection</dt><dd><b id="tintIrr">99</b>%</dd></div>
               <div><dt>UV rejection</dt><dd><b id="tintUvr">99</b>%</dd></div>
