@@ -256,7 +256,7 @@ body.no-gl .stage canvas { display: none; }
 .gchip b { font-weight: 500; color: var(--orange); }
 .gchip[aria-checked='true'] { background: var(--ceramic); color: var(--carbon); border-color: var(--ceramic); }
 .gchip[aria-checked='true'] b { color: var(--carbon); }
-.tint__films { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
+.tint__films { display: grid; grid-template-columns: repeat(var(--n, 5), 1fr); gap: 6px; margin-bottom: 12px; }
 .fchip { display: grid; justify-items: center; gap: 3px; padding: 8px 2px 7px; background: rgba(242, 242, 240, 0.06); border: 1px solid var(--line); cursor: pointer; transition: 0.25s; }
 .fchip:hover { border-color: rgba(242, 242, 240, 0.4); }
 .fchip i { width: 100%; max-width: 44px; height: 16px; background: var(--f); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22); }
@@ -266,6 +266,7 @@ body.no-gl .stage canvas { display: none; }
 .fchip[aria-checked='true'] span { color: var(--ceramic); }
 .tint--simple .tint__glass, .tint--simple .tint__step { display: none; }
 .panel--tint { top: max(84px, 10vh); }
+.panel--armor .btn { margin-top: 14px; }
 .spin--left .spin__hint { left: 32%; }
 .spin.is-top .spin__pad { cursor: default; }
 .spin.is-top .spin__hint { display: none; }
@@ -565,6 +566,7 @@ body.has-cart .fab { bottom: 92px; }
   .panel--tint .tint__films { margin-bottom: 8px; }
   .panel--tint .fchip { padding: 6px 2px 5px; }
   .panel--tint .tint__vlt { margin-left: 4px; }
+  .panel--armor .btn { display: none; }                         /* Get a quote stays in the top bar */
   .panel--tint > p:not(.chapter) { display: none; }
   .layers__stack { left: 0; width: 52%; }
   .layers__labels { width: 44%; }

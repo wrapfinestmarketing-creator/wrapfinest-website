@@ -230,33 +230,33 @@
 
       <!-- 04 TINT -->
       <section class="step step--tall" id="tint" data-step="tint" data-product="Nitro · 9-layer nano ceramic tint" data-chapter="tint">
-        <div class="spin spin--left" id="tspin" hidden>
-          <div class="spin__pad" id="tspinPad" role="slider" tabindex="0" aria-label="Rotate the car" aria-valuemin="0" aria-valuemax="360" aria-valuenow="0" aria-valuetext="Side view">
+        <div class="spin spin--left" data-t="spin" hidden>
+          <div class="spin__pad" id="tspinPad" data-t="pad" role="slider" tabindex="0" aria-label="Rotate the car" aria-valuemin="0" aria-valuemax="360" aria-valuenow="0" aria-valuetext="Side view">
             <p class="spin__hint mono" aria-hidden="true"><svg width="44" height="18" viewBox="0 0 44 18" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="22" cy="9" rx="20" ry="7"/><path d="M6 3 2 9l6 1"/></svg><span>Drag to rotate</span><b>360°</b></p>
           </div>
         </div>
         <div class="panel panel--right panel--tint">
           <p class="chapter mono">04 — Nano Ceramic Tint</p>
           <h2 class="title">Nine layers between you and a 60° cabin.</h2>
-          <p id="tintIntro">F1 Nitro rejects up to 99% of infrared heat with zero signal loss. Choose a shade for each glass, then turn the car.</p>
-          <div class="tint" id="tintBox">
+          <p data-t="intro">F1 Nitro rejects up to 99% of infrared heat with zero signal loss. Choose a shade for each glass, then turn the car.</p>
+          <div class="tint" data-t="box">
             <div class="tint__row">
               <p class="tint__step mono"><b>1</b>Choose the glass</p>
-              <div class="tint__views" id="tintViews" role="radiogroup" aria-label="View" hidden>
+              <div class="tint__views" data-t="views" role="radiogroup" aria-label="View" hidden>
                 <button type="button" class="chip" role="radio" data-view="360" aria-checked="true">360°</button>
                 <button type="button" class="chip" role="radio" data-view="top" aria-checked="false">Top view</button>
               </div>
             </div>
-            <div class="tint__glass" id="tintGlass" role="radiogroup" aria-label="Glass"></div>
+            <div class="tint__glass" data-t="glass" role="radiogroup" aria-label="Glass"></div>
             <p class="tint__step mono"><b>2</b>Choose the shade <span>· VLT = light let through</span></p>
-            <div class="tint__films" id="tintFilms" role="radiogroup" aria-label="Film shade"></div>
-            <p class="tint__head mono"><span id="tintName">Nitro M35</span><strong id="tintShade">Medium Light</strong><span class="tint__vlt"><b id="tintVlt">35</b>% VLT</span></p>
+            <div class="tint__films" data-t="films" role="radiogroup" aria-label="Film shade"></div>
+            <p class="tint__head mono"><span data-t="name">Nitro M35</span><strong data-t="shade">Medium Light</strong><span class="tint__vlt"><b data-t="vlt">35</b>% VLT</span></p>
             <dl class="tint__specs">
-              <div><dt>IR rejection</dt><dd><b id="tintIrr">99</b>%</dd></div>
-              <div><dt>UV rejection</dt><dd><b id="tintUvr">99</b>%</dd></div>
-              <div><dt>Total solar energy rejected</dt><dd><b id="tintTser">83.6</b>%</dd></div>
+              <div><dt>IR rejection</dt><dd><b data-t="irr">99</b>%</dd></div>
+              <div><dt>UV rejection</dt><dd><b data-t="uvr">99</b>%</dd></div>
+              <div><dt>Total solar energy rejected</dt><dd><b data-t="tser">83.6</b>%</dd></div>
             </dl>
-            <div class="tint__heat" aria-hidden="true"><span class="mono">Cabin heat let in</span><div><i id="tintHeat"></i></div></div>
+            <div class="tint__heat" aria-hidden="true"><span class="mono">Cabin heat let in</span><div><i data-t="heat"></i></div></div>
           </div>
           <p class="fine mono">Zero signal loss · RFID friendly · 10-year warranty</p>
         </div>
@@ -369,6 +369,39 @@
             <li><b>2 / 6 yrs</b><span>windshield / other glass</span></li>
             <li><b>3</b><span>shades: Clear Blue, Light Medium, Medium Dark</span></li>
           </ul>
+          <a class="btn btn--primary" href="#quote" data-prefill="Thermoshield X">Armor my glass</a>
+        </div>
+      </section>
+
+      <section class="step step--tall" id="armor" data-step="armor" data-product="Thermoshield X · exterior glass armor" data-chapter="thermo">
+        <div class="spin" data-t="spin" hidden>
+          <div class="spin__pad" id="aspinPad" data-t="pad" role="slider" tabindex="0" aria-label="Rotate the car" aria-valuemin="0" aria-valuemax="360" aria-valuenow="0" aria-valuetext="Side view">
+            <p class="spin__hint mono" aria-hidden="true"><svg width="44" height="18" viewBox="0 0 44 18" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="22" cy="9" rx="20" ry="7"/><path d="M6 3 2 9l6 1"/></svg><span>Drag to rotate</span><b>360°</b></p>
+          </div>
+        </div>
+        <div class="panel panel--left panel--tint panel--armor">
+          <p class="chapter mono">05 — Thermoshield X · Shades</p>
+          <h2 class="title">Armor every glass, in your shade.</h2>
+          <p data-t="intro">Thermoshield X goes on the outside of the glass in three shades. Choose one for each glass, then turn the car.</p>
+          <div class="tint" data-t="box">
+            <div class="tint__row">
+              <p class="tint__step mono"><b>1</b>Choose the glass</p>
+              <div class="tint__views" data-t="views" role="radiogroup" aria-label="View" hidden>
+                <button type="button" class="chip" role="radio" data-view="360" aria-checked="true">360°</button>
+                <button type="button" class="chip" role="radio" data-view="top" aria-checked="false">Top view</button>
+              </div>
+            </div>
+            <div class="tint__glass" data-t="glass" role="radiogroup" aria-label="Glass"></div>
+            <p class="tint__step mono"><b>2</b>Choose the shade <span>· VLT = light let through</span></p>
+            <div class="tint__films" data-t="films" role="radiogroup" aria-label="Film shade"></div>
+            <p class="tint__head mono"><span data-t="name">Nitro M35</span><strong data-t="shade">Medium Light</strong><span class="tint__vlt"><b data-t="vlt">35</b>% VLT</span></p>
+            <dl class="tint__specs">
+              <div><dt>IR rejection</dt><dd>up to <b>98</b>%</dd></div>
+              <div><dt>UV rejection</dt><dd><b>99.9</b>%</dd></div>
+              <div><dt>Film</dt><dd><b>5</b> mil EPU</dd></div>
+            </dl>
+          </div>
+          <p class="fine mono">Outside the glass · cold wet install · 2 / 6-year warranty</p>
           <a class="btn btn--primary" href="#quote" data-prefill="Thermoshield X">Armor my glass</a>
         </div>
       </section>

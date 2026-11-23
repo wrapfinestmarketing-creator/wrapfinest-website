@@ -9,6 +9,12 @@ export const TINTS = [
   { id: 'M35', name: 'Nitro M35', shade: 'Medium Light', vlt: 35, irr: 99, uvr: 99, tser: 83.6, film: [0.4, 0.412, 0.432] },
   { id: 'A70', name: 'Nitro Artic70', shade: 'Clear Blue', vlt: 70, irr: 98, uvr: 99, tser: 65.5, film: [0.6, 0.79, 0.98] },
 ];
+// Thermoshield X comes in three shades. The deck gives its specs for the film as a whole, not per shade.
+export const ARMOR = [
+  { id: 'TX20', name: 'Thermoshield X 20', shade: 'Medium Dark', vlt: 20, film: [0.24, 0.248, 0.262] },
+  { id: 'TX35', name: 'Thermoshield X 35', shade: 'Light Medium', vlt: 35, film: [0.4, 0.412, 0.432] },
+  { id: 'TX70', name: 'Thermoshield X 70', shade: 'Clear Blue', vlt: 70, film: [0.6, 0.79, 0.98] },
+];
 // The glass a visitor can tint, in the order the tint shader numbers it (src/tint.js), with the film each starts on.
 export const GLASS = [
   { id: 'w', name: 'Windshield', short: 'Windshield', film: 'A70' },

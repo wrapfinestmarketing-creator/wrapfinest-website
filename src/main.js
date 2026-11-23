@@ -1,6 +1,6 @@
 import './styles.css';
 import Lenis from 'lenis';
-import { TINTS, GLASS, FINISHES, SWATCHES, TINT_LAYERS, CONTACT } from './data.js';
+import { TINTS, ARMOR, GLASS, FINISHES, SWATCHES, TINT_LAYERS, CONTACT } from './data.js';
 import { createStory } from './story.js';
 import { createFilm } from './film.js';
 import { createPainter } from './paint.js';
@@ -17,9 +17,9 @@ const isMobile = () => matchMedia('(max-width: 760px)').matches;
 const params = new URLSearchParams(location.search);
 
 // live state the story reads on every scroll tick
-const ctx = { thermo: 1, tint: 0.64, finish: 'finish-gloss', idle: 0, get mobile() { return isMobile(); },
+const ctx = { thermo: 1, finish: 'finish-gloss', idle: 0, get mobile() { return isMobile(); },
   spin: false, angle: 0, paint: FINISHES[0].paint,              // 360 view: on/off, turns (1 = full turn), live paint recipe
-  tspin: false, tangle: 0, tview: '360', tints: { key: '', rgb: new Float32Array(15).fill(1) }, tfocus: { fk: 0 } };   // tint car: on/off, turns, 360 or top view, film per glass
+  tc: {} };                                                      // glass configurators (tint, Thermoshield X), see createGlassConfig
 let film = null;
 
 /* ---------------- preloader ---------------- */
@@ -59,11 +59,11 @@ let shop = null;
 const ui = { filmBar: $('#filmBar'), filmPct: $('#filmPct'), healBar: $('#healBar'), healTxt: $('#healTxt'), layers: $('#layers') };
 let lastChapter = '', lastIndex = -1;
 // which media the next step needs, so it is already loading before the visitor gets there
-const NEEDS = { hero: ['hero'], film: ['ppf'], impact: ['impact'], heal: ['heal'], pcu: ['outro'], rain: ['rain'], monsoon: ['rain'], studio: ['finish-gloss', 'finish-satin', 'finish-onyx'], tint: ['tint-light', 'tint-dark'], layers: [], chipbare: ['chipbare'], wrapglass: ['wrapglass'], stones: ['stones'], roof: ['roof'], heat: ['heat-bare', 'heat-shield'], install: [], smash: ['smash'], accintro: ['kit-parts'], kitfront: ['kitfront'], kitrear: ['kitrear'], mats: ['mats'], shade: ['shade'], exit: ['shade'] };
+const NEEDS = { hero: ['hero'], film: ['ppf'], impact: ['impact'], heal: ['heal'], pcu: ['outro'], rain: ['rain'], monsoon: ['rain'], studio: ['finish-gloss', 'finish-satin', 'finish-onyx'], tint: ['tint-light', 'tint-dark'], armor: ['tint-light', 'tint-dark'], layers: [], chipbare: ['chipbare'], wrapglass: ['wrapglass'], stones: ['stones'], roof: ['roof'], heat: ['heat-bare', 'heat-shield'], install: [], smash: ['smash'], accintro: ['kit-parts'], kitfront: ['kitfront'], kitrear: ['kitrear'], mats: ['mats'], shade: ['shade'], exit: ['shade'] };
 
 function onScroll() {
   const y = window.scrollY;
-  ctx.tfocus = tintFocus();
+  for (const g of Object.values(glassCfg)) g.refocus();
   const s = story.sample(y, ctx), sc = s.scene;
   story.steps.forEach((st, i) => st.el.classList.toggle('is-active', i === s.index && s.active));
   film?.set(sc); film?.setHidden(sc.dim > 0.985);
@@ -91,7 +91,7 @@ function onScroll() {
   if (sc.meter != null) { ui.filmBar.style.transform = `scaleX(${sc.meter})`; ui.filmPct.textContent = Math.round(sc.meter * 100); }
   if (sc.heal != null) { ui.healBar.style.transform = `scaleX(${sc.heal})`; ui.healTxt.textContent = sc.heal > 0.97 ? 'Healed' : sc.heal > 0.05 ? 'Healing…' : 'Scratched'; }
   if (s.step.key === 'studio' && s.active) studioSpin.intro();
-  if (s.step.key === 'tint' && s.active) { tintSpin.intro(); if (ctx.tspin) film?.preload(['ttop']); }
+  const gc = glassCfg[s.step.key]; if (gc && s.active) gc.shown();
   if (s.step.key === 'layers') ui.layers.style.setProperty('--spread', Math.min(1, Math.max(0, (s.p - 0.08) / 0.45)).toFixed(3));
 }
 window.addEventListener('scroll', onScroll, { passive: true });
@@ -106,12 +106,11 @@ if (!reducedMotion && !params.has('still')) {
 
 /* ---------------- finish studio ---------------- */
 const chipsEl = $('#finishChips'), swEl = $('#swatches'), blurbEl = $('#finishBlurb'), productEl = $('#finishProduct'), selInput = $('#formSelection');
-const filmOf = id => TINTS.find(t => t.id === id);
-const sel = { finish: FINISHES[0], swatch: SWATCHES[0], glass: 'w', tints: Object.fromEntries(GLASS.map(g => [g.id, filmOf(g.film)])) };
+const sel = { finish: FINISHES[0], swatch: SWATCHES[0] };
+const glassCfg = {};                                             // the glass configurators by step: tint, armor
 function updateSelectionField() {
   const f = sel.finish.swatches ? `${sel.finish.label}: ${sel.swatch.name}` : `${sel.finish.label} (${sel.finish.product})`;
-  const films = GLASS.map(g => sel.tints[g.id]), same = films.every(t => t === films[0]);
-  selInput.value = `${f} · Tint ` + (same ? `${films[0].name} ${films[0].vlt}% VLT on all glass` : GLASS.map(g => `${g.name} ${sel.tints[g.id].vlt}%`).join(', '));
+  selInput.value = [f, ...Object.values(glassCfg).map(g => g.summary()).filter(Boolean)].join(' · ');
 }
 function applyFinish() {
   const f = sel.finish;
@@ -207,82 +206,111 @@ function createSpin({ pad, seq, on, get, set }) {
   return { setAngle, intro, stop, turnTo };
 }
 const studioSpin = createSpin({ pad: $('#spinPad'), seq: 'spin', on: () => ctx.spin, get: () => ctx.angle, set: a => { ctx.angle = a; } });
-const tintSpin = createSpin({ pad: $('#tspinPad'), seq: 'tspin', on: () => ctx.tspin && ctx.tview === '360', get: () => ctx.tangle, set: a => { ctx.tangle = a; } });
-
-/* ---------------- tint: a film for each glass ---------------- */
-const tintUI = { box: $('#tintBox'), glass: $('#tintGlass'), films: $('#tintFilms'), views: $('#tintViews'), spin: $('#tspin'),
-  name: $('#tintName'), shade: $('#tintShade'), vlt: $('#tintVlt'), irr: $('#tintIrr'), uvr: $('#tintUvr'), tser: $('#tintTser'), heat: $('#tintHeat') };
-const tintNow = new Float32Array(15).fill(1); let tintRaf = 0, tintTick = 0;
-const tintGoal = () => GLASS.flatMap(g => sel.tints[g.id].film);
-function tintGlide(jump) {                                       // the glass darkens or clears over a moment instead of snapping
-  cancelAnimationFrame(tintRaf);
-  const goal = tintGoal(); let last = performance.now();
-  const step = now => {
-    const k = jump || reducedMotion ? 1 : 1 - Math.exp(-Math.min(0.05, (now - last) / 1000) * 9); last = now; let far = false;
-    for (let i = 0; i < 15; i++) { tintNow[i] += (goal[i] - tintNow[i]) * k; if (Math.abs(goal[i] - tintNow[i]) > 0.002) far = true; else tintNow[i] = goal[i]; }
-    ctx.tints = { key: String(++tintTick), rgb: tintNow };
-    onScroll(); if (far) tintRaf = requestAnimationFrame(step);
-  };
-  step(last);
-}
+/* ---------------- glass configurators: a film for each glass ---------------- */
+// One configurator per section (Nitro tint, Thermoshield X): the same car and glass, its own films and choices.
 // Picking a glass turns the car to where that glass is best seen and zooms onto it (the roof: the top view).
 const GLASS_VIEW = { w: 0.12, f: 0.04, r: 0.96, k: 0.78, o: 'top' };
-function tintFocus() {
-  if (!ctx.tspin || !sel.zoom || sel.glass === 'all') return { fk: 0 };      // no zoom until a glass is picked
-  const gi = GLASS.findIndex(g => g.id === sel.glass), top = ctx.tview === 'top', m = manifest.seqs[top ? 'ttop' : 'tspin'];
-  const n = m?.focus?.length || 0; if (!n) return { fk: 0 };
-  const f = top ? 0 : ((Math.round(ctx.tangle * n) % n) + n) % n, b = m.focus[f][gi];
-  return b ? { fk: 1, fcx: b[0], fcy: b[1], fw: b[2], fh: b[3] } : { fk: 0 };
-}
-function showGlass(id) {
-  if (!ctx.tspin || id === 'all') return;
-  const v = GLASS_VIEW[id];
-  if (v === 'top') { if (ctx.tview !== 'top') setTintView('top'); return; }
-  if (ctx.tview !== '360') setTintView('360');
-  tintSpin.turnTo(v);
-}
-function setTintView(v) {
-  ctx.tview = v; tintSpin.stop();
-  $$('.chip', tintUI.views).forEach(b => b.setAttribute('aria-checked', String(b.dataset.view === v)));
-  tintUI.spin.classList.toggle('is-top', v === 'top'); onScroll();
-}
-function applyTint(jump) {
-  const films = GLASS.map(g => sel.tints[g.id]), all = sel.glass === 'all';
-  const shown = all ? (films.every(t => t === films[0]) ? films[0] : null) : sel.tints[sel.glass];
-  $$('button', tintUI.glass).forEach(b => {
-    b.setAttribute('aria-checked', String(b.dataset.id === sel.glass));
-    if (b.dataset.id !== 'all') $('b', b).textContent = sel.tints[b.dataset.id].vlt;
-  });
-  $$('button', tintUI.films).forEach(b => b.setAttribute('aria-checked', String(!!shown && b.dataset.id === shown.id)));
-  const avg = k => films.reduce((n, t) => n + t[k], 0) / films.length, r1 = n => Math.round(n * 10) / 10;
-  tintUI.name.textContent = shown ? shown.name : 'F1 Nitro'; tintUI.shade.textContent = shown ? shown.shade : 'Mixed shades';
-  tintUI.vlt.textContent = shown ? shown.vlt : '5–70';
-  tintUI.irr.textContent = shown ? shown.irr : Math.round(avg('irr')); tintUI.uvr.textContent = shown ? shown.uvr : Math.round(avg('uvr')); tintUI.tser.textContent = shown ? shown.tser : r1(avg('tser'));
-  tintUI.heat.style.transform = `scaleX(${Math.max(0.04, (100 - (shown ? shown.tser : avg('tser'))) / 100)})`;
-  ctx.tint = Math.pow(1 - (avg('vlt') - 5) / 65, 0.8);           // fallback pictures: 5% VLT = the dark one, 70% = the light one
-  updateSelectionField(); tintGlide(jump);
-}
-function initTint() {
-  const simple = !ctx.tspin;                                     // no live glass: one shade for the whole car
-  tintUI.box.classList.toggle('tint--simple', simple); tintUI.views.hidden = simple; tintUI.spin.hidden = simple;
-  if (simple) { sel.glass = 'all'; for (const g of GLASS) sel.tints[g.id] = filmOf('M35'); $('#tintIntro').textContent = 'F1 Nitro rejects up to 99% of infrared heat with zero signal loss. Choose a shade to see it on the car.'; }
-  for (const g of [...GLASS, { id: 'all', name: 'All glass' }]) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'gchip'; b.role = 'radio'; b.dataset.id = g.id;
-    b.innerHTML = g.id === 'all' ? `<span>${g.name}</span>` : `<span>${g.name}</span><b></b>`;
-    b.onclick = () => { sel.glass = g.id; sel.zoom = true; showGlass(g.id); applyTint(); };
-    tintUI.glass.append(b);
+function createGlassConfig({ step, films, start, label, mixed, simpleIntro, simpleFilm, specs, quote, alwaysQuote }) {
+  const root = $(`[data-step="${step}"]`), q = k => $(`[data-t="${k}"]`, root);
+  const ui = { spin: q('spin'), pad: q('pad'), box: q('box'), views: q('views'), glass: q('glass'), films: q('films'), name: q('name'), shade: q('shade'), vlt: q('vlt'), intro: q('intro') };
+  const filmOf = id => films.find(t => t.id === id);
+  // on: live glass available, angle: turns, view: 360 or top, tints: what each glass lets through (eased),
+  // focus: the zoom box, alpha: fallback cross-fade, glass: picked glass, zoom: zoom on after the first pick
+  const g = { on: false, angle: 0, view: '360', tints: { key: '', rgb: new Float32Array(15).fill(1) }, focus: { fk: 0 }, alpha: 0.6, glass: 'w', zoom: false, touched: false,
+    film: Object.fromEntries(GLASS.map(x => [x.id, filmOf(start[x.id])])) };
+  ctx.tc[step] = g;
+  const spin = createSpin({ pad: ui.pad, seq: 'tspin', on: () => g.on && g.view === '360', get: () => g.angle, set: a => { g.angle = a; } });
+  const now = new Float32Array(15).fill(1); let raf = 0, tick = 0;
+  function glide(jump) {                                         // the glass darkens or clears over a moment instead of snapping
+    cancelAnimationFrame(raf);
+    const goal = GLASS.flatMap(x => g.film[x.id].film); let last = performance.now();
+    const stepf = t => {
+      const k = jump || reducedMotion ? 1 : 1 - Math.exp(-Math.min(0.05, (t - last) / 1000) * 9); last = t; let far = false;
+      for (let i = 0; i < 15; i++) { now[i] += (goal[i] - now[i]) * k; if (Math.abs(goal[i] - now[i]) > 0.002) far = true; else now[i] = goal[i]; }
+      g.tints = { key: step + ++tick, rgb: now };
+      onScroll(); if (far) raf = requestAnimationFrame(stepf);
+    };
+    stepf(last);
   }
-  for (const t of TINTS) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'fchip'; b.role = 'radio'; b.dataset.id = t.id;
-    b.style.setProperty('--f', `rgb(${t.film.map(v => Math.round(40 + v * 200)).join(',')})`);
-    b.setAttribute('aria-label', `${t.shade}, ${t.vlt}% VLT, ${t.name}`);
-    b.innerHTML = `<i></i><b>${t.vlt}</b><span>${t.shade}</span>`;
-    b.onclick = () => { for (const g of GLASS) if (sel.glass === 'all' || sel.glass === g.id) sel.tints[g.id] = t; applyTint(); };
-    tintUI.films.append(b);
+  function refocus() {
+    g.focus = { fk: 0 };
+    if (!g.on || !g.zoom || g.glass === 'all') return;           // no zoom until a glass is picked
+    const gi = GLASS.findIndex(x => x.id === g.glass), top = g.view === 'top', m = manifest.seqs[top ? 'ttop' : 'tspin'];
+    const n = m?.focus?.length || 0; if (!n) return;
+    const b = m.focus[top ? 0 : ((Math.round(g.angle * n) % n) + n) % n][gi];
+    if (b) g.focus = { fk: 1, fcx: b[0], fcy: b[1], fw: b[2], fh: b[3] };
   }
-  $$('.chip', tintUI.views).forEach(b => { b.onclick = () => setTintView(b.dataset.view); });
-  applyTint(true);
+  function setView(v) {
+    g.view = v; spin.stop();
+    $$('.chip', ui.views).forEach(b => b.setAttribute('aria-checked', String(b.dataset.view === v)));
+    ui.spin.classList.toggle('is-top', v === 'top'); onScroll();
+  }
+  function show(id) {
+    if (!g.on || id === 'all') return;
+    const v = GLASS_VIEW[id];
+    if (v === 'top') { if (g.view !== 'top') setView('top'); return; }
+    if (g.view !== '360') setView('360');
+    spin.turnTo(v);
+  }
+  function apply(jump) {
+    const list = GLASS.map(x => g.film[x.id]), all = g.glass === 'all';
+    const shown = all ? (list.every(t => t === list[0]) ? list[0] : null) : g.film[g.glass];
+    $$('button', ui.glass).forEach(b => {
+      b.setAttribute('aria-checked', String(b.dataset.id === g.glass));
+      if (b.dataset.id !== 'all') $('b', b).textContent = g.film[b.dataset.id].vlt;
+    });
+    $$('button', ui.films).forEach(b => b.setAttribute('aria-checked', String(!!shown && b.dataset.id === shown.id)));
+    ui.name.textContent = shown ? shown.name : label; ui.shade.textContent = shown ? shown.shade : 'Mixed shades';
+    const vs = films.map(t => t.vlt); ui.vlt.textContent = shown ? shown.vlt : `${Math.min(...vs)}–${Math.max(...vs)}`;
+    specs?.(shown, list, root);
+    const avg = list.reduce((n, t) => n + t.vlt, 0) / list.length;
+    g.alpha = Math.pow(1 - (avg - 5) / 65, 0.8);                 // fallback pictures: 5% VLT = the dark one, 70% = the light one
+    updateSelectionField(); glide(jump);
+  }
+  function summary() {
+    if (!alwaysQuote && !g.touched) return '';
+    const list = GLASS.map(x => g.film[x.id]);
+    return `${quote} ` + (list.every(t => t === list[0]) ? `${list[0].vlt}% VLT on all glass` : GLASS.map(x => `${x.name} ${g.film[x.id].vlt}%`).join(', '));
+  }
+  function init(live) {
+    g.on = live;
+    ui.box.classList.toggle('tint--simple', !live); ui.views.hidden = !live; ui.spin.hidden = !live;
+    if (!live) { g.glass = 'all'; for (const x of GLASS) g.film[x.id] = filmOf(simpleFilm); ui.intro.textContent = simpleIntro; }
+    for (const x of [...GLASS, { id: 'all', name: 'All glass' }]) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'gchip'; b.role = 'radio'; b.dataset.id = x.id;
+      b.innerHTML = x.id === 'all' ? `<span>${x.name}</span>` : `<span>${x.name}</span><b></b>`;
+      b.onclick = () => { g.glass = x.id; g.zoom = true; show(x.id); apply(); };
+      ui.glass.append(b);
+    }
+    ui.films.style.setProperty('--n', films.length);
+    for (const t of films) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'fchip'; b.role = 'radio'; b.dataset.id = t.id;
+      b.style.setProperty('--f', `rgb(${t.film.map(v => Math.round(40 + v * 200)).join(',')})`);
+      b.setAttribute('aria-label', `${t.shade}, ${t.vlt}% VLT, ${t.name}`);
+      b.innerHTML = `<i></i><b>${t.vlt}</b><span>${t.shade}</span>`;
+      b.onclick = () => { g.touched = true; for (const x of GLASS) if (g.glass === 'all' || g.glass === x.id) g.film[x.id] = t; apply(); };
+      ui.films.append(b);
+    }
+    $$('.chip', ui.views).forEach(b => { b.onclick = () => setView(b.dataset.view); });
+    apply(true);
+  }
+  // when the section is on screen: one slow turn the first time, and the top view starts loading
+  const shown = () => { spin.intro(); if (g.on) film?.preload(['ttop']); };
+  return (glassCfg[step] = { step, g, spin, init, refocus, summary, shown, setAngle: spin.setAngle });
 }
+createGlassConfig({
+  step: 'tint', films: TINTS, start: Object.fromEntries(GLASS.map(x => [x.id, x.film])), label: 'F1 Nitro', quote: 'Tint', alwaysQuote: true, simpleFilm: 'M35',
+  simpleIntro: 'F1 Nitro rejects up to 99% of infrared heat with zero signal loss. Choose a shade to see it on the car.',
+  specs(shown, list, root) {
+    const avg = k => list.reduce((n, t) => n + t[k], 0) / list.length, r1 = n => Math.round(n * 10) / 10, set = (k, v) => { $(`[data-t="${k}"]`, root).textContent = v; };
+    set('irr', shown ? shown.irr : Math.round(avg('irr'))); set('uvr', shown ? shown.uvr : Math.round(avg('uvr'))); set('tser', shown ? shown.tser : r1(avg('tser')));
+    $('[data-t="heat"]', root).style.transform = `scaleX(${Math.max(0.04, (100 - (shown ? shown.tser : avg('tser'))) / 100)})`;
+  },
+});
+createGlassConfig({
+  step: 'armor', films: ARMOR, start: { w: 'TX70', f: 'TX35', r: 'TX20', k: 'TX20', o: 'TX20' }, label: 'Thermoshield X', quote: 'Thermoshield X', simpleFilm: 'TX35',
+  simpleIntro: 'Thermoshield X goes on the outside of the glass in three shades. Choose one to see it on the car.',
+});
 
 /* 9-layer stack */
 (() => {
@@ -388,10 +416,10 @@ async function boot() {
   ctx.spin = !!painter; $('#spin').hidden = !ctx.spin; if (ctx.spin) NEEDS.studio = ['spin'];
   // the same goes for the tint car: 360 and top view with a film per glass, or the old two still pictures
   const tinter = manifest.seqs.tspin && manifest.seqs.ttop && !params.has('nospin') ? createTinter() : null;
-  ctx.tspin = !!tinter; if (ctx.tspin) NEEDS.tint = ['tspin', 'ttop'];
-  initTint(); updateSelectionField();
+  for (const g of Object.values(glassCfg)) { g.init(!!tinter); if (tinter) NEEDS[g.step] = ['tspin', 'ttop']; }
+  updateSelectionField();
   film = createFilm({ canvas: $('#film'), base: BASE, manifest, reducedMotion, painter, tinter });
-  window.__wf = { film, story, onScroll, ctx, setAngle: studioSpin.setAngle, setTintAngle: tintSpin.setAngle, painter, tinter };
+  window.__wf = { film, story, onScroll, ctx, setAngle: studioSpin.setAngle, glass: glassCfg, painter, tinter };
   // show the page once the hero is scrubbable; everything else streams in behind
   const heroN = manifest.seqs.hero?.n || 0, need = Math.min(heroN, 12);
   let done = 0; const bump = () => setProgress(0.04 + 0.9 * Math.min(1, ++done / Math.max(1, need)));
