@@ -1,17 +1,19 @@
 // Scroll film player: draws pre-rendered cinematic frames to a 2D canvas.
 // A "scene" is { key, layers:[{seq,t}|{still,alpha}], focus:[x,y], anchor, zoom }.
+// A seq layer may add loop:true (t counts turns and wraps, for the 360 view) and paint:{...}
+// (the frame is repainted by src/paint.js before it is drawn).
 // When the key changes the previous picture crossfades (or wipes) into the new one.
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const pad = n => String(n).padStart(4, '0');
 
-export function createFilm({ canvas, base, manifest, reducedMotion }) {
+export function createFilm({ canvas, base, manifest, reducedMotion, painter }) {
   const ctx = canvas.getContext('2d', { alpha: false });
   const snap = document.createElement('canvas'), sctx = snap.getContext('2d', { alpha: false });
   const isMobile = matchMedia('(max-width: 760px)').matches;
   const variant = isMobile ? 'm' : 'd';
   const seqs = {}, stills = {};
-  for (const [name, s] of Object.entries(manifest.seqs)) seqs[name] = { n: s.n, frames: new Array(s.n).fill(null), asked: new Uint8Array(s.n), loaded: 0, waiters: [] };
+  for (const [name, s] of Object.entries(manifest.seqs)) seqs[name] = { n: s.n, frames: new Array(s.n).fill(null), asked: new Uint8Array(s.n), loaded: 0, waiters: [], plate: s.plate ? null : undefined, rect: s.rect };
 
   // ---------- loading (coarse-to-fine so scrubbing works early) ----------
   const queue = []; let active = 0; const MAX = isMobile ? 4 : 8;
@@ -20,6 +22,7 @@ export function createFilm({ canvas, base, manifest, reducedMotion }) {
   function order(n) { const out = [], seen = new Uint8Array(n); for (let step = 16; step >= 1; step >>= 1) for (let i = 0; i < n; i += step) if (!seen[i]) { seen[i] = 1; out.push(i); } if (!seen[n - 1]) out.push(n - 1); return out; }
   function loadSeq(name, front = false) {
     const s = seqs[name]; if (!s || s.started) return; s.started = true;
+    if (s.plate === null) loadImage(`${base}film/${name}/${variant}/plate.webp`).then(img => { s.plate = img; dirty = true; }).catch(() => {});   // the background its cut-out frames sit on
     const jobs = order(s.n).map(i => () => loadImage(`${base}film/${name}/${variant}/${pad(i + 1)}.webp`).then(img => { s.frames[i] = img; s.loaded++; dirty = true; s.waiters = s.waiters.filter(w => (s.loaded >= w.min ? (w.res(), false) : true)); }).catch(() => { s.loaded++; }));
     if (front) queue.unshift(...jobs); else queue.push(...jobs); pump();
   }
@@ -28,8 +31,14 @@ export function createFilm({ canvas, base, manifest, reducedMotion }) {
     if (stills[name]) return stills[name].promise;
     const e = (stills[name] = { img: null }); e.promise = loadImage(`${base}film/stills/${name}-${variant}.webp`).then(img => { e.img = img; dirty = true; }).catch(() => {}); return e.promise;
   }
-  function frameOf(name, t) {
-    const s = seqs[name]; if (!s) return null; const f = clamp(Math.round(t * (s.n - 1)), 0, s.n - 1);
+  function frameOf(name, t, loop) {
+    const s = seqs[name]; if (!s) return null;
+    if (loop) {                                                   // t counts whole turns; frame 0 follows the last frame
+      const f = ((Math.round(t * s.n) % s.n) + s.n) % s.n;
+      for (let d = 0; d <= s.n >> 1; d++) { const a = s.frames[(f - d + s.n) % s.n]; if (a) return a; const b = s.frames[(f + d) % s.n]; if (b) return b; }
+      return null;
+    }
+    const f = clamp(Math.round(t * (s.n - 1)), 0, s.n - 1);
     for (let d = 0; d < s.n; d++) { if (f - d >= 0 && s.frames[f - d]) return s.frames[f - d]; if (f + d < s.n && s.frames[f + d]) return s.frames[f + d]; }
     return null;
   }
@@ -49,6 +58,19 @@ export function createFilm({ canvas, base, manifest, reducedMotion }) {
 
   function place(img) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const fit = target?.fit;                                     // 360 view: this share of the picture's width must stay visible
+    if (fit && isMobile) {
+      const top = 58 * dpr, bandH = Math.min(W * 1.02, H * 0.56), s = W / (iw * fit), w = iw * s, h = ih * s;
+      const y = h < bandH ? top + 6 * dpr : top;                 // sits high so the text card below never covers the wheels
+      return { x: W / 2 - cur.fx * w, y, w, h, band: Math.min(top + bandH, y + h), soft: true, clip: [0, top, W, bandH] };
+    }
+    if (fit) {
+      const l = target.side === 'L' ? 0.25 : 0, r = target.side === 'R' ? 0.25 : 0, room = W * (1 - l - r);   // the text panel keeps a quarter
+      const s = Math.min(Math.max(W / iw, H / ih) * cur.zoom, room / (iw * fit)), w = iw * s, h = ih * s;
+      const x = W * (l + (1 - l - r) / 2) - cur.fx * w - px * 10 * dpr;
+      const y = h >= H ? clamp(0.52 * H - cur.fy * h - py * 6 * dpr, H - h, 0) : (H - h) * 0.5;
+      return { x, y, w, h, band: H, soft: h < H };
+    }
     if (isMobile) {                                              // picture band at the top, text below
       const top = 58 * dpr, bandH = Math.min(W * 1.02, H * 0.56), vis = 0.6 / cur.zoom;
       const s = Math.max(W / (iw * vis), bandH / ih), w = iw * s, h = ih * s;
@@ -66,7 +88,8 @@ export function createFilm({ canvas, base, manifest, reducedMotion }) {
     ctx.globalAlpha = 1; ctx.fillStyle = '#0a0b0d'; ctx.fillRect(0, 0, W, H);
     if (!target) return; let band = H, drew = false, edge = null;
     for (const L of target.layers) {
-      const img = L.seq ? frameOf(L.seq, cur.t[L.seq] ?? L.t) : stills[L.still]?.img; if (!img) continue;
+      let img = L.seq ? frameOf(L.seq, cur.t[L.seq] ?? L.t, L.loop) : stills[L.still]?.img; if (!img) continue;
+      if (L.paint && painter) { img = painter.render(img, L.paint, seqs[L.seq].plate, seqs[L.seq].rect); if (!img) continue; }
       const a = L.still ? (cur.alpha[L.still] ?? L.alpha ?? 1) : 1; if (a <= 0.003) continue;
       const r = place(img); ctx.globalAlpha = drew ? a : 1; if (r.clip) { ctx.save(); ctx.beginPath(); ctx.rect(...r.clip); ctx.clip(); } ctx.drawImage(img, r.x, r.y, r.w, r.h); if (r.clip) ctx.restore(); band = r.band; drew = true; edge = r;
     }
@@ -76,14 +99,19 @@ export function createFilm({ canvas, base, manifest, reducedMotion }) {
       if (edge.x > 0.5) { const g = ctx.createLinearGradient(edge.x, 0, edge.x + fw, 0); g.addColorStop(0, 'rgba(10,11,13,1)'); g.addColorStop(1, 'rgba(10,11,13,0)'); ctx.fillStyle = g; ctx.fillRect(edge.x - 1, 0, fw + 1, H); }
       const rx = edge.x + edge.w; if (rx < W - 0.5) { const g = ctx.createLinearGradient(rx, 0, rx - fw, 0); g.addColorStop(0, 'rgba(10,11,13,1)'); g.addColorStop(1, 'rgba(10,11,13,0)'); ctx.fillStyle = g; ctx.fillRect(rx - fw, 0, fw + 1, H); }
     }
-    if (isMobile && drew) { const g = ctx.createLinearGradient(0, band - 0.34 * (band - 58 * dpr), 0, band); g.addColorStop(0, 'rgba(10,11,13,0)'); g.addColorStop(1, 'rgba(10,11,13,1)'); ctx.fillStyle = g; ctx.fillRect(0, band - 0.34 * (band - 58 * dpr) - 1, W, 0.34 * (band - 58 * dpr) + 2); }
+    if (edge?.soft) {                                            // the picture does not reach the top and bottom: fade both edges out
+      const fh = 0.16 * edge.h;
+      let g = ctx.createLinearGradient(0, edge.y, 0, edge.y + fh); g.addColorStop(0, 'rgba(10,11,13,1)'); g.addColorStop(1, 'rgba(10,11,13,0)'); ctx.fillStyle = g; ctx.fillRect(0, edge.y - 1, W, fh + 1);
+      if (!isMobile) { g = ctx.createLinearGradient(0, edge.y + edge.h, 0, edge.y + edge.h - fh); g.addColorStop(0, 'rgba(10,11,13,1)'); g.addColorStop(1, 'rgba(10,11,13,0)'); ctx.fillStyle = g; ctx.fillRect(0, edge.y + edge.h - fh, W, fh + 1); }
+    }
+    if (isMobile && drew) { const fr = edge?.soft ? 0.12 : 0.34, g = ctx.createLinearGradient(0, band - fr * (band - 58 * dpr), 0, band); g.addColorStop(0, 'rgba(10,11,13,0)'); g.addColorStop(1, 'rgba(10,11,13,1)'); ctx.fillStyle = g; ctx.fillRect(0, band - fr * (band - 58 * dpr) - 1, W, fr * (band - 58 * dpr) + 2); }
   }
 
   function frame(dt) {
     if (!target) return;
     const k = reducedMotion ? 1 : 1 - Math.exp(-dt * 9); let moving = false;
     for (const L of target.layers) {
-      if (L.seq) { const c = cur.t[L.seq] ?? L.t, n = c + (L.t - c) * k; if (Math.abs(n - c) > 0.0004) moving = true; cur.t[L.seq] = Math.abs(L.t - n) < 0.0005 ? L.t : n; }
+      if (L.seq) { const c = cur.t[L.seq] ?? L.t, n = c + (L.t - c) * (L.loop && !reducedMotion ? 1 - Math.exp(-dt * 16) : k); if (Math.abs(n - c) > 0.0004) moving = true; cur.t[L.seq] = Math.abs(L.t - n) < 0.0005 ? L.t : n; }
       else { const ta = L.alpha ?? 1, c = cur.alpha[L.still] ?? ta, n = c + (ta - c) * (reducedMotion ? 1 : 1 - Math.exp(-dt * 6)); if (Math.abs(n - c) > 0.002) moving = true; cur.alpha[L.still] = Math.abs(ta - n) < 0.003 ? ta : n; }
     }
     for (const key of ['ax', 'zoom', 'fx', 'fy']) { const tv = target[key], n = cur[key] + (tv - cur[key]) * (reducedMotion ? 1 : 1 - Math.exp(-dt * 4)); if (Math.abs(n - cur[key]) > 0.0003) moving = true; cur[key] = n; }
@@ -102,12 +130,13 @@ export function createFilm({ canvas, base, manifest, reducedMotion }) {
   return {
     isMobile,
     whenSeq, loadSeq, loadStill,
+    seqLoaded: name => { const s = seqs[name]; return s ? s.loaded / s.n : 0; },
     /** Set the scene for the current scroll position. */
     set(scene) {
       for (const L of scene.layers) { if (L.seq) loadSeq(L.seq, true); else loadStill(L.still); }
       if (scene.key !== curKey) {
         if (curKey && !reducedMotion) { sctx.drawImage(canvas, 0, 0); fade = 0; fadeMode = scene.transition || 'fade'; } else fade = 1;
-        for (const L of scene.layers) { if (L.seq) cur.t[L.seq] = L.t; }      // start the new shot where the scroll is
+        for (const L of scene.layers) { if (L.seq && !(L.loop && cur.t[L.seq] != null)) cur.t[L.seq] = L.t; }      // start the new shot where the scroll is
         if (!curKey || isMobile) { cur.ax = scene.ax; cur.zoom = scene.zoom; cur.fx = scene.fx; cur.fy = scene.fy; }
         curKey = scene.key;
       }

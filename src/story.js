@@ -14,7 +14,9 @@ export const KEYS = {
   pcu: p => S('outro', [{ seq: 'outro', t: p * 0.35 }], { side: 'C', dim: 0.8 }),
   rain: p => S('rain', [{ seq: 'rain', t: p * 0.55 }], { side: 'R', fx: 0.5, fy: 0.6 }),
   monsoon: p => S('rain', [{ seq: 'rain', t: 0.55 + p * 0.45 }], { side: 'L', fx: 0.56, fy: 0.6 }),
-  studio: (p, c) => S('finish:' + c.finish, [{ still: c.finish, alpha: 1 }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.04, transition: 'wipe' }),
+  studio: (p, c) => c.spin
+    ? S('finish:' + c.finish, [{ seq: 'spin', t: c.angle, loop: true, paint: c.paint }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.84, transition: 'wipe' })
+    : S('finish:' + c.finish, [{ still: c.finish, alpha: 1 }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.04, transition: 'wipe' }),
   tint: (p, c) => S('tint', [{ still: 'tint-light', alpha: 1 }, { still: 'tint-dark', alpha: c.tint }], { side: 'R', fx: 0.56, fy: 0.42, zoom: 1.5 }),
   layers: (p, c) => S('tint', [{ still: 'tint-light', alpha: 1 }, { still: 'tint-dark', alpha: c.tint }], { side: 'C', fx: 0.56, fy: 0.42, zoom: 1.5, dim: 0.84 }),
   chipbare: p => S('chipbare', [{ seq: 'chipbare', t: clamp01(p * 1.05) }], { side: 'L', fx: 0.5, fy: 0.45 }),

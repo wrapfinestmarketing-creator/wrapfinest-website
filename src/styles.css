@@ -222,6 +222,18 @@ body.no-gl .stage canvas { display: none; }
 .swatch[aria-checked='true'] { border-color: var(--ceramic); transform: scale(1.12); }
 .studio__product { color: var(--orange); margin: 18px 0 22px; }
 .studio__blurb { min-height: 4.8em; }
+/* 360 view: a drag surface that stays over the car while the studio step is on screen */
+.spin { position: absolute; inset: 0; pointer-events: none; }
+.spin[hidden] { display: none; }
+.spin__pad { position: sticky; top: 0; height: 100vh; height: 100svh; pointer-events: auto; touch-action: pan-y; cursor: grab; outline: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.spin__pad.is-dragging { cursor: grabbing; }
+.spin__hint { position: absolute; left: 68%; bottom: 96px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 9px 14px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(10, 11, 13, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ceramic); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.6s var(--ease); }
+.spin__hint b { color: var(--orange); font-weight: 500; }
+.spin__hint svg { color: var(--orange); }
+.step.is-active .spin__hint { opacity: 1; }
+.spin__pad.is-used .spin__hint { opacity: 0.55; }
+.spin__pad:focus-visible .spin__hint { outline: 2px solid var(--orange); outline-offset: 3px; opacity: 1; }
+.step > .panel { z-index: 1; }
 
 /* tint */
 .tint { margin-top: 22px; padding: 20px; background: rgba(22, 24, 28, 0.72); border: 1px solid var(--line); backdrop-filter: blur(14px); }
@@ -509,6 +521,16 @@ body.has-cart .fab { bottom: 92px; }
   .trio, .versus, .form__row { grid-template-columns: 1fr; }
   .prices, .voices__grid { grid-template-columns: 1fr; }
   .studio__blurb { min-height: 0; }
+  .spin__pad { top: 58px; height: min(102vw, 56vh); height: min(102vw, 56svh); }
+  .spin__hint { left: 50%; top: calc(67vw - 34px); bottom: auto; padding: 6px 10px; gap: 8px; font-size: 0.56rem; }
+  .spin__hint svg { width: 34px; height: 14px; }
+  /* the studio panel stays short on phones so the whole car is visible above it */
+  .panel--studio .studio__blurb, .panel--studio .chapter { display: none; }
+  .panel--studio .chips { margin-top: 14px; gap: 6px; }
+  .panel--studio .chip { min-height: 40px; padding: 0 12px; }
+  .panel--studio .swatches { flex-wrap: nowrap; gap: 6px; margin-top: 12px; }
+  .panel--studio .swatch { width: 34px; height: 34px; flex: none; }
+  .panel--studio .studio__product { margin: 10px 0 12px; }
   .studio__product { margin: 12px 0 14px; }
   .chips { margin-top: 12px; }
   .tint { padding: 14px; margin-top: 12px; }
