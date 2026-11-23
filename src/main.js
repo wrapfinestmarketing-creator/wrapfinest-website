@@ -303,7 +303,7 @@ async function boot() {
   const painter = manifest.seqs.spin && !params.has('nospin') ? createPainter() : null;
   ctx.spin = !!painter; $('#spin').hidden = !ctx.spin; if (ctx.spin) NEEDS.studio = ['spin'];
   film = createFilm({ canvas: $('#film'), base: BASE, manifest, reducedMotion, painter });
-  window.__wf = { film, story, onScroll, ctx, setAngle };
+  window.__wf = { film, story, onScroll, ctx, setAngle, painter };
   // show the page once the hero is scrubbable; everything else streams in behind
   const heroN = manifest.seqs.hero?.n || 0, need = Math.min(heroN, 12);
   let done = 0; const bump = () => setProgress(0.04 + 0.9 * Math.min(1, ++done / Math.max(1, need)));

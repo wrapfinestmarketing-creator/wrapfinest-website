@@ -20,7 +20,7 @@ export const TINTS = [
 export const FINISHES = [
   { id: 'gloss', still: 'finish-gloss', paint: { c: '#b00c1c', kd: 0.92, ks: 1, km: 0.55, satin: 0 }, f1: 'Apex Ultra · PCU ultra gloss', label: 'Ultra Gloss', product: 'F1 Apex Ultra · PCU', service: 'Paint protection film',
     blurb: 'Clear PCU film over your factory color. Mirror gloss above 100 GU, 12-year warranty.' },
-  { id: 'satin', still: 'finish-satin', paint: { c: '#a30f1e', kd: 0.95, ks: 1, km: 0.3, satin: 1 }, f1: 'Apex Satin · satin PPF', label: 'Satin', product: 'F1 Apex Satin', service: 'Paint protection film',
+  { id: 'satin', still: 'finish-satin', paint: { c: '#c4161f', kd: 0.95, ks: 1, km: 0.55, satin: 1 }, f1: 'Apex Satin · satin PPF', label: 'Satin', product: 'F1 Apex Satin', service: 'Paint protection film',
     blurb: 'Turns gloss paint into a smooth satin finish while protecting it. 8-year warranty.' },
   { id: 'onyx', still: 'finish-onyx', paint: { c: '#050506', kd: 1, ks: 1.05, km: 0, satin: 0 }, f1: 'Onyx · gloss black PPF', label: 'Gloss Black', product: 'F1 Onyx', service: 'Paint protection film',
     blurb: 'Deep gloss-black protection film with the same gloss and anti-yellowing as Apex. 10-year warranty.' },
@@ -33,10 +33,10 @@ export const SWATCHES = [
   { name: 'Signal Orange', color: '#ee6a12', still: 'finish-orange', paint: { c: '#ee6a12', kd: 1, ks: 1, km: 0.1, satin: 0 } },
   { name: 'Royal Blue', color: '#12279a', still: 'finish-blue', paint: { c: '#1230b4', kd: 1, ks: 1, km: 0.45, satin: 0 } },
   { name: 'Racing Green', color: '#0f3d24', still: 'finish-green', paint: { c: '#0f4a2a', kd: 1, ks: 1, km: 0.45, satin: 0 } },
-  { name: 'Nardo-style Grey', color: '#8b8f92', still: 'finish-grey', paint: { c: '#8b8f92', kd: 1.08, ks: 0.95, km: 0, lift: 0.75, satin: 0 } },
-  { name: 'Pearl White', color: '#ecece9', still: 'finish-white', paint: { c: '#f4f4f1', kd: 1.1, ks: 0.85, km: 0, lift: 0.55, satin: 0 } },
+  { name: 'Nardo-style Grey', color: '#8b8f92', still: 'finish-grey', paint: { c: '#8b8f92', kd: 1, ks: 0.9, km: 0, satin: 0 } },
+  { name: 'Pearl White', color: '#ecece9', still: 'finish-white', paint: { c: '#f6f6f3', kd: 1.04, ks: 0.45, km: 0, lift: 0.7, satin: 0 } },
   { name: 'Midnight Purple', color: '#2c1548', still: 'finish-purple', paint: { c: '#3a1a66', kd: 1, ks: 1, km: 0.5, satin: 0 } },
-  { name: 'Sun Yellow', color: '#f0cf1d', still: 'finish-yellow', paint: { c: '#f2cf14', kd: 1.08, ks: 1, km: 0.05, lift: 0.8, satin: 0 } },
+  { name: 'Sun Yellow', color: '#f0cf1d', still: 'finish-yellow', paint: { c: '#f2cf14', kd: 1, ks: 0.9, km: 0.05, satin: 0 } },
   { name: 'Miami Teal', color: '#18a79c', still: 'finish-teal', paint: { c: '#18a79c', kd: 1, ks: 1, km: 0.15, satin: 0 } },
 ];
 

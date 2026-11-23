@@ -2,9 +2,12 @@
 #   python3 tools/build-spin.py <site-dir> q1.mp4 q2.mp4 q3.mp4 q4.mp4 [--n 72] [--preview dir]
 # The clips run side -> front -> other side -> rear -> side, each starting on the frame the last one ended on.
 # Output (public/film/spin/{d,m}/): plate.webp = the empty-looking bay (steady background),
-# NNNN.webp = the car cut out with a soft alpha edge, cropped to the area the car ever covers.
-# src/paint.js puts each cut-out back on the plate and repaints it.
+# NNNN.webp = the car cut out, cropped to the area the car ever covers. Its alpha channel carries two things:
+#   0 .. 0.5  = how solid the cut-out is (soft edge, shadow on the floor)
+#   0.5 .. 1  = solid, and how much of the pixel is paint (the paint matte)
+# src/paint.js puts each cut-out back on the plate and repaints what the matte marks.
 import sys, os, json, subprocess, tempfile, glob, argparse
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np, cv2
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -66,23 +69,52 @@ for r0 in range(0, H, 90):
     plate[r0:r0 + 90] = np.where(np.isnan(med), plain, med).astype(np.uint8)
 never = covered.all(0)                                           # always behind the car: no background known there
 
-# ---- only the paint may be blue: the clips give greys, glass and light edges a faint blue cast that the
-# live repaint would otherwise pick up, so blue is clipped back to neutral everywhere except on and next to paint
+# ---- only the paint may be blue: the clips give greys, glass and the floor a faint blue cast, which is
+# clipped back to neutral everywhere outside the paint matte
 def unblue(im, keep=None):
     b = im[..., 0]; lim = np.maximum(im[..., 1], im[..., 2]).astype(np.int16) - 6       # a touch below neutral, so compression noise cannot bring blue back
     lim = np.clip(lim, 0, 255).astype(np.uint8)
     nb = np.minimum(b, lim) if keep is None else np.where(keep, b, np.minimum(b, lim))
     out = im.copy(); out[..., 0] = nb; return out
-def paint_zone(im):
-    m, d, _ = decompose(im[..., ::-1].astype(np.float32) / 255)
-    k = ((m > 0.5) & (d > 0.22)).astype(np.uint8)
-    k = cv2.morphologyEx(k, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-    n, lab, st, _ = cv2.connectedComponentsWithStats(k)
-    big = st[1:, cv2.CC_STAT_AREA].max() if n > 1 else 0
-    for i in range(1, n):
-        if st[i, cv2.CC_STAT_AREA] < 0.0015 * big: k[lab == i] = 0     # specks are not paint
-    return cv2.dilate(k, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25, 25))).astype(bool)
 plate = unblue(plate)
+
+# ---- paint matte: which pixels of the car are paint. The clearly blue pixels are certain. A reflection can wash
+# the blue out completely, so bright patches are added when paint is what they border; patches that border glass
+# or trim stay out, and so do the lamps (large patches of pure white) and anything warm (tail-lights, calipers).
+def paint_matte(im, sil):
+    f = im[..., ::-1].astype(np.float32) / 255
+    m, d, _ = decompose(f)
+    car = cv2.resize(sil, (W, H), interpolation=cv2.INTER_NEAREST)
+    near = cv2.dilate(car, np.ones((9, 9), np.uint8)).astype(bool); car = car.astype(bool)
+    core = ((m > 0.5) & (d > 0.22) & near).astype(np.uint8)
+    core = cv2.morphologyEx(core, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(core)
+    area = st[:, cv2.CC_STAT_AREA]; big = area[1:].max()
+    md = np.bincount(lab.ravel(), weights=d.ravel(), minlength=n) / np.maximum(area, 1)
+    drop = (area < 0.0002 * big) | ((md < 0.5) & (area < 0.5 * big)); drop[0] = False      # specks; the car mirrored in the floor
+    core = (core > 0) & ~drop[lab]
+    mx, mn = f.max(-1), f.min(-1)
+    bright = car & ~core & (mx > 0.5) & ~(f[..., 0] > f[..., 2] + 0.10)
+    neutral = bright & (mn > 0.8) & (mx - mn < 0.06)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(neutral.astype(np.uint8))
+    lampc = st[:, cv2.CC_STAT_AREA] > 2600; lampc[0] = False
+    lamp = cv2.dilate(lampc[lab].astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
+    cand = bright & ~lamp
+    # solid patches: paint if paint is what they border (inside the car)
+    solid = cv2.morphologyEx(cand.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(solid)
+    labd = cv2.dilate(lab.astype(np.float32), np.ones((7, 7), np.uint8)).astype(np.int32)
+    ring = (labd > 0) & (lab == 0) & car & ~cand
+    frac = np.bincount(labd[ring & core], minlength=n) / np.maximum(np.bincount(labd[ring], minlength=n), 1)
+    ok = (frac > 0.6) | ((frac > 0.4) & (st[:, cv2.CC_STAT_AREA] < 500)); ok[0] = False
+    P = core | ok[lab]
+    # thin leftovers (rims of those patches, fine lines): paint if most of what is around them is paint
+    ref = (car & ~(cand & ~P)).astype(np.float32)
+    fr = cv2.blur(P.astype(np.float32), (13, 13)) / np.maximum(cv2.blur(ref, (13, 13)), 1e-3)
+    P = (P | (cand & ~P & (fr > 0.55))).astype(np.uint8)
+    # one pixel wider: an edge pixel is paint mixed with its neighbour, and the repaint handles that mix correctly
+    P = cv2.dilate(P, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+    return cv2.GaussianBlur(P.astype(np.float32), (0, 0), 0.8)
 
 # ---- car silhouette per frame -> soft alpha
 def silhouette(im):
@@ -113,30 +145,8 @@ def alpha_of(k):
     return cv2.resize(al, (W, H), interpolation=cv2.INTER_LINEAR)
 
 sils = [silhouette(im) for im in imgs]
-imgs = [unblue(im, paint_zone(im)) for im in imgs]
-
-# ---- blown-out reflections: where a reflection clips to pure white the paint underneath can no longer be seen,
-# so the repaint would leave it alone (a satin finish would keep hard white specks). Small white patches that are
-# surrounded by paint get a trace of blue back, which marks them as "paint with a strong reflection".
-# Large or long thin patches are left alone: those are the light bars.
-def mark_cores(im, sil):
-    f = im.astype(np.float32) / 255
-    m, _, _ = decompose(f[..., ::-1])
-    mx, mn = f.max(-1), f.min(-1)
-    white = (mn > 0.78) & (mx - mn < 0.07)
-    nw = (~white).astype(np.float32)
-    frac = cv2.blur(((m > 0.5) & ~white).astype(np.float32) * nw, (21, 21)) / np.maximum(cv2.blur(nw, (21, 21)), 1e-3)
-    inside = cv2.resize(sil, (W, H), interpolation=cv2.INTER_NEAREST).astype(bool)
-    n, lab, st, _ = cv2.connectedComponentsWithStats((white & inside).astype(np.uint8))
-    cnt = np.maximum(st[:, cv2.CC_STAT_AREA], 1); mean = np.bincount(lab.ravel(), weights=frac.ravel(), minlength=n) / cnt
-    bw, bh = st[:, cv2.CC_STAT_WIDTH], st[:, cv2.CC_STAT_HEIGHT]
-    core = (mean > 0.6) & (cnt < 2600) & ~((bw > 150) & (bw > 7 * bh) & (cnt > 6 * bw)); core[0] = False   # a light bar is long, thin and solid
-    cm = cv2.dilate(core[lab].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool) & white
-    out = im.copy()
-    out[..., 1] = np.where(cm, (im[..., 1] * 0.91).astype(np.uint8), im[..., 1])     # same hue as the base paint
-    out[..., 2] = np.where(cm, (im[..., 2] * 0.85).astype(np.uint8), im[..., 2])
-    return out
-imgs = [mark_cores(im, k) for im, k in zip(imgs, sils)]
+mattes = [paint_matte(im, k) for im, k in zip(imgs, sils)]
+imgs = [unblue(im, cv2.dilate((P > 0.02).astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)) for im, P in zip(imgs, mattes)]
 alphas = [alpha_of(k) for k in sils]
 union = np.max(np.stack([al > 0.004 for al in alphas]), axis=0)
 ys, xs = np.where(union)
@@ -154,10 +164,14 @@ for v, w, q, qp in (('d', a.wd, 80, 84), ('m', a.wm, 72, 80)):
     pl = Image.fromarray(plate[..., ::-1]).resize((w, round(H * sc)), Image.LANCZOS)
     pl.save(f'{od}/plate.webp', quality=qp, method=6)
     total = 0
-    for i, (im, al) in enumerate(zip(imgs, alphas)):
-        rgba = np.dstack([im[y0:y1, x0:x1, ::-1], (al[y0:y1, x0:x1] * 255 + 0.5).astype(np.uint8)])
-        pi = Image.fromarray(rgba, 'RGBA').resize((round((x1 - x0) * sc), round((y1 - y0) * sc)), Image.LANCZOS)
-        fn = f'{od}/{i + 1:04d}.webp'; pi.save(fn, quality=q, method=6, alpha_quality=80); total += os.path.getsize(fn)
+    size = (round((x1 - x0) * sc), round((y1 - y0) * sc))
+    def save(i):
+        code = np.clip(alphas[i], 0, 1) * (0.5 + 0.5 * mattes[i])     # see the header: cut-out below 0.5, paint matte above
+        rgb = Image.fromarray(imgs[i][y0:y1, x0:x1, ::-1]).resize(size, Image.LANCZOS)
+        ac = cv2.resize(code[y0:y1, x0:x1], size, interpolation=cv2.INTER_AREA)           # no overshoot: the two halves must not bleed into each other
+        pi = Image.merge('RGBA', (*rgb.split(), Image.fromarray((ac * 255 + 0.5).astype(np.uint8))))
+        fn = f'{od}/{i + 1:04d}.webp'; pi.save(fn, quality=q, method=6, alpha_quality=100); return os.path.getsize(fn)
+    with ThreadPoolExecutor(4) as ex: total = sum(ex.map(save, range(len(imgs))))
     print(v, 'plate', os.path.getsize(f'{od}/plate.webp') // 1024, 'KB; frames', total // 1024, 'KB total,', total // 1024 // len(imgs), 'KB each')
 
 mf = os.path.join(a.site, 'src/film-manifest.json'); man = json.load(open(mf))
