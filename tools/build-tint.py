@@ -100,10 +100,15 @@ for r0 in range(0, H, 60):
     plate[r0:r0 + 60] = np.where(np.isnan(med), np.median(blk, axis=0), med).astype(np.uint8)
 valid = (~cov).sum(0) >= 3                                       # elsewhere the car is always in the way: no background known
 del cov
+# The floor under and around the car is never seen without the car, so no clean background exists there; the
+# frames themselves are used there instead (fully solid cut-out), with a soft edge into the plate.
+WALL = 660
+unknown = ~valid; unknown[:WALL - 40] = False
+unknown = cv2.dilate(unknown.astype(np.uint8), ell(31))
+solid_floor = np.clip(cv2.GaussianBlur(unknown.astype(np.float32), (0, 0), 10) * 1.6 - 0.3, 0, 1)
 # Behind the car the back wall is upright light panels on a dark wall, the same from top to bottom, so the wall just
 # above the hidden area is carried down into it. That is enough to find the car's outline around the windows.
-WALL = 660                                                       # the panels end just below this row
-for x in range(W):
+for x in range(W):                                               # the panels end just below row WALL
     bad = np.where(~valid[:WALL, x])[0]
     if not len(bad): continue
     y0 = bad[0]
@@ -167,31 +172,62 @@ def zones_of(i, g):
     th = 2 * np.pi * i / N; c, sn = np.cos(th), np.sin(th)
     proj = lambda X, Y: CX + SC * (-X * c + Y * sn) * (1 + KAPPA * (X * sn + Y * c))
     side = 1 if c > 0 else -1
+    nose_left = c > 0                                            # the nose is on the left of the picture while cos > 0
     lum = imgs[i].astype(np.float32).mean(-1) / 255
+    xx = np.arange(W)[None, :]; yy = np.arange(H)[:, None]
     z = np.zeros((H, W), np.uint8)                               # 1 windshield, 2 front side, 3 rear side, 4 rear window
-    n, lab, st, cen = cv2.connectedComponentsWithStats(cv2.morphologyEx(g.astype(np.uint8), cv2.MORPH_OPEN, ell(7)))
-    cands = []
-    if sn > -0.25: cands.append((1, proj(0.85, 0)))
-    if sn < 0.25: cands.append((4, proj(-1.9, 0)))
-    if abs(c) > 0.15: cands.append((2, proj(-0.4, side * 0.8)))
-    xx = np.arange(W)[None, :]
-    for j in range(1, n):
-        if st[j, cv2.CC_STAT_AREA] < 150: continue
-        k = min(cands, key=lambda q: abs(q[1] - cen[j][0]))[0]; m = lab == j
-        if k != 2: z[m] = k; continue
-        xb = proj(-0.26, side * 0.82); xs0, xs1 = st[j, 0], st[j, 0] + st[j, 2]
-        cols = np.arange(xs0, xs1); cnt = m[:, xs0:xs1].sum(0).astype(np.float32)
-        dark = cv2.GaussianBlur(((m[:, xs0:xs1] & (lum[:, xs0:xs1] < 0.14)).sum(0) / np.maximum(cnt, 1))[None], (0, 0), 3)[0]
-        near = (np.abs(cols - xb) < 60) & (cnt > 0.5 * cnt.max())
-        if near.any() and dark[near].max() > 0.6: xb = float(cols[near][np.argmax(dark[near])])
-        front = (xx < xb) if c > 0 else (xx > xb)                # the nose is on the left of the picture while cos > 0
-        z[m & front] = 2; z[m & ~front] = 3
-    rest = g & (z == 0)                                          # thin bits take the name of the nearest named glass
-    if rest.any() and (z > 0).any():
-        d, idx = cv2.distanceTransformWithLabels((z == 0).astype(np.uint8), cv2.DIST_L2, 3, labelType=cv2.DIST_LABEL_PIXEL)
-        src = np.zeros(idx.max() + 1, np.uint8); src[idx[z > 0]] = z[z > 0]
-        z[rest & (d < 14)] = src[idx][rest & (d < 14)]
-    return z, g & (z > 0)                                         # glass that got no name is left alone
+    ys = np.where(g.any(1))[0]
+    if not len(ys): return z, g
+    top, belt = ys.min(), ys.max()
+    def pillar(xb_, xt_, span=70):
+        """a slanted line from the window base (xb_ at the belt) to the roof (xt_ at the top), moved sideways to sit on the darkest band of the glass"""
+        rows = np.arange(top, belt + 1); best = (-1, 0)
+        for d in range(-span, span + 1, 3):
+            xl = np.round(xb_ + (xt_ - xb_) * (belt - rows) / max(belt - top, 1)).astype(int) + d
+            ok = (xl >= 0) & (xl < W); r, x = rows[ok], xl[ok]
+            on = g[r, x]
+            if on.sum() < 10: continue
+            score = (lum[r, x][on] < 0.17).mean() * min(1, on.sum() / (0.4 * len(rows)))
+            if score > best[0]: best = (score, d)
+        d = best[1]
+        return lambda: xb_ + d + (xt_ - xb_) * (belt - yy) / max(belt - top, 1)
+    def beyond(line, towards_nose):
+        x_line = line()
+        return (xx < x_line) if (towards_nose == nose_left) else (xx > x_line)
+    if sn > 0.15 and abs(c) > 0.15:
+        # front corner: the near A-pillar parts the windshield from the side windows, the B-pillar the two side windows
+        a_line = pillar(proj(0.95, side * 0.8), proj(0.2, side * 0.64))
+        ws = beyond(a_line, True) & g; z[ws] = 1
+        b_line = pillar(proj(-0.26, side * 0.84), proj(-0.32, side * 0.7))
+        rest = g & ~ws
+        z[rest & beyond(b_line, True)] = 2; z[rest & ~beyond(b_line, True)] = 3
+        if (z == 2).sum() < 0.35 * (z == 3).sum(): z[z == 3] = 2      # near end-on only the front door glass shows next to the windshield
+        return z, g
+    if sn < -0.15 and abs(c) > 0.15:
+        # rear corner: the C-pillar (body coloured) parts the rear window from the rear side window, the B-pillar the side windows
+        c_line = pillar(proj(-1.95, side * 0.8), proj(-1.55, side * 0.62))
+        rw = beyond(c_line, False) & g; z[rw] = 4
+        b_line = pillar(proj(-0.26, side * 0.84), proj(-0.32, side * 0.7))
+        rest = g & ~rw
+        z[rest & beyond(b_line, True)] = 2; z[rest & ~beyond(b_line, True)] = 3
+        if (z == 3).sum() < 0.35 * (z == 2).sum(): z[z == 2] = 3      # near end-on only the rear door glass shows next to the rear window
+        if (z == 4).sum() < 0.2 * ((z == 2) | (z == 3)).sum(): z[z == 4] = 3   # near side-on that is only the small quarter glass, tinted with the rear doors
+        return z, g
+    if abs(c) > 0.15:
+        # side on: only the side windows, parted by the B-pillar
+        b_line = pillar(proj(-0.26, side * 0.84), proj(-0.32, side * 0.7))
+        z[g & beyond(b_line, True)] = 2; z[g & ~beyond(b_line, True)] = 3
+        return z, g
+    # straight at the nose or the tail: one big window, with a sliver of side glass at each edge
+    big = 4 if sn < 0 else 1
+    z[g] = big
+    if g.any():
+        xs = np.where(g.any(0))[0]; w = xs.max() - xs.min()
+        edge = (xx < xs.min() + 0.07 * w) | (xx > xs.max() - 0.07 * w)
+        n, lab, st, _ = cv2.connectedComponentsWithStats((g & edge).astype(np.uint8))
+        for j in range(1, n):
+            if st[j, cv2.CC_STAT_HEIGHT] > 0.5 * (belt - top): z[lab == j] = 2 if big == 1 else 3
+    return z, g
 
 def one(i):
     cut = cutout(imgs[i]); z, g = zones_of(i, glass_of(i, cut)); return cut, g, z
@@ -219,7 +255,7 @@ def alpha_of(k):
     ground = cv2.dilate(cv2.dilate(k, np.ones((120, 1), np.uint8), anchor=(0, 0)), np.ones((1, 31), np.uint8))   # reach below the car for its shadow
     al = cv2.GaussianBlur(np.maximum(body, ground).astype(np.float32), (0, 0), 10)
     return np.clip((al - 0.08) / 0.84, 0, 1)
-alphas = [alpha_of(k) for k in cuts]
+alphas = [np.maximum(alpha_of(k), solid_floor) for k in cuts]
 mattes = [cv2.GaussianBlur(g.astype(np.float32), (0, 0), 0.8) for g in glasses]
 union = np.max(np.stack([al > 0.004 for al in alphas]), axis=0)
 ys, xs = np.where(union); pad = 8
