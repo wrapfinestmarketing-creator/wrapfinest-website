@@ -71,7 +71,7 @@ Philippine context everywhere: monsoon, acid rain, UV index 8–11, 60–70 °C 
 |---|---|
 | Premium PPF | ₱100,000 |
 | Full color change (wrap / colored PPF) | ₱75,000 |
-| Nano ceramic tint | ₱9,000 |
+| Nano ceramic tint | ₱11,000 (as low as) |
 | Thermoshield X | ₱20,000 |
 
 ⚠️ **Never** show F1 dealer/roll pricing from the distributor deck.
