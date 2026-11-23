@@ -119,7 +119,7 @@ for x in range(W):                                               # the panels en
 # ---------------- 3. per frame: cut-out, paint, glass ----------------
 def cutout(im):                                                  # generous: whatever differs from the bay, and everything where the bay is unknown
     k = ((((np.abs(im.astype(np.int16) - plate).max(-1) > 30) | paint_of(im)) & valid) | ~valid).astype(np.uint8)
-    k[: int(H * 0.15)] = 0; k[int(H * 0.72):] = 0
+    k[: int(H * 0.15)] = 0; k[int(H * 0.86):] = 0
     k = cv2.morphologyEx(k, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
     k = cv2.morphologyEx(k, cv2.MORPH_CLOSE, ell(21))
     n, lab, st, _ = cv2.connectedComponentsWithStats(k)
@@ -255,7 +255,15 @@ def alpha_of(k):
     ground = cv2.dilate(cv2.dilate(k, np.ones((120, 1), np.uint8), anchor=(0, 0)), np.ones((1, 31), np.uint8))   # reach below the car for its shadow
     al = cv2.GaussianBlur(np.maximum(body, ground).astype(np.float32), (0, 0), 10)
     return np.clip((al - 0.08) / 0.84, 0, 1)
-alphas = [np.maximum(alpha_of(k), solid_floor) for k in cuts]
+# The floor around the car: its shadow and reflection move with the car, and no frame shows that floor without the
+# car, so the plate cannot be trusted there. Every frame keeps its own floor across the whole area the car ever
+# stands on, down past the tyres, blending into the plate only at the far edges.
+foot = np.max(np.stack(cuts), axis=0).astype(np.uint8); foot[:WALL - 60] = 0
+foot = cv2.dilate(foot, np.ones((1, 161), np.uint8))
+foot = np.maximum(foot, cv2.dilate(foot, np.ones((160, 1), np.uint8), anchor=(0, 0)))
+floor = np.clip(cv2.GaussianBlur(foot.astype(np.float32), (0, 0), 22) * 1.5 - 0.25, 0, 1)
+floor[:WALL - 60] = 0; floor = cv2.GaussianBlur(floor, (0, 0), 6)
+alphas = [np.maximum(np.maximum(alpha_of(k), solid_floor), floor) for k in cuts]
 mattes = [cv2.GaussianBlur(g.astype(np.float32), (0, 0), 0.8) for g in glasses]
 union = np.max(np.stack([al > 0.004 for al in alphas]), axis=0)
 ys, xs = np.where(union); pad = 8
@@ -286,6 +294,13 @@ for v, w in (('d', a.wd), ('m', a.wm)):
     for i in range(N): atlas[(i // cols) * ch:(i // cols + 1) * ch, (i % cols) * cw:(i % cols + 1) * cw] = cv2.resize(zd[i], (cw, ch), interpolation=cv2.INTER_NEAREST) * 50
     Image.fromarray(atlas, 'L').save(f'{out}/{v}/zones.webp', lossless=True, method=6)
     print(v, 'zones', atlas.shape[1], 'x', atlas.shape[0], os.path.getsize(f'{out}/{v}/zones.webp') // 1024, 'KB')
+# where each window is in every frame (plate coordinates 0..1: centre x, centre y, width, height), for the zoom
+def box(m):
+    ys, xs = np.where(m)
+    if len(xs) < 400: return 0
+    xa, xb = np.percentile(xs, [3, 97]); ya, yb = np.percentile(ys, [3, 97])
+    return [round((xa + xb) / 2 / W, 4), round((ya + yb) / 2 / H, 4), round((xb - xa) / W, 4), round((yb - ya) / H, 4)]
+focus = [[box(z == k) for k in (1, 2, 3, 4)] for z in zones]
 mf = os.path.join(a.site, 'src/film-manifest.json'); man = json.load(open(mf))
-man['seqs']['tspin'] = {'n': N, 'plate': 1, 'rect': [round(x0 / W, 5), round(y0 / H, 5), round((x1 - x0) / W, 5), round((y1 - y0) / H, 5)], 'zones': [cols, rows]}
+man['seqs']['tspin'] = {'n': N, 'plate': 1, 'rect': [round(x0 / W, 5), round(y0 / H, 5), round((x1 - x0) / W, 5), round((y1 - y0) / H, 5)], 'zones': [cols, rows], 'focus': focus}
 json.dump(man, open(mf, 'w'), separators=(',', ':'))

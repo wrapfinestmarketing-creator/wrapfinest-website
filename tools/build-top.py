@@ -43,7 +43,17 @@ for v, w in (('d', 1920), ('m', 1280)):
     print(v, os.path.getsize(f'{od}/0001.webp') // 1024, 'KB +', os.path.getsize(f'{od}/zones.webp') // 1024, 'KB')
 import json
 mf = os.path.join(site, 'src/film-manifest.json'); man = json.load(open(mf))
-man['seqs']['ttop'] = {'n': 1, 'rect': [0, 0, 1, 1], 'zones': [1, 1]}
+def box(m):
+    ys, xs = np.where(m)
+    if len(xs) < 400: return 0
+    xa, xb = np.percentile(xs, [3, 97]); ya, yb = np.percentile(ys, [3, 97])
+    return [round((xa + xb) / 2 / W, 4), round((ya + yb) / 2 / H, 4), round((xb - xa) / W, 4), round((yb - ya) / H, 4)]
+raw = np.zeros((H, W), np.uint8)
+for k, ps in poly.items():
+    m = np.zeros((H, W), np.uint8)
+    for p in ps: cv2.fillPoly(m, [np.array(p, np.int32)], 1)
+    raw[m.astype(bool)] = num[k]
+man['seqs']['ttop'] = {'n': 1, 'rect': [0, 0, 1, 1], 'zones': [1, 1], 'focus': [[box(raw == k) for k in (1, 2, 3, 4, 5)]]}
 json.dump(man, open(mf, 'w'), separators=(',', ':'))
 if '--preview' in sys.argv:
     COL = np.array([(0, 0, 0), (60, 60, 255), (60, 255, 60), (255, 120, 40), (40, 230, 255), (255, 60, 255)], np.float32)

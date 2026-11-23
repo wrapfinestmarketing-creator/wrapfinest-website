@@ -11,8 +11,8 @@ const S = (key, layers, o = {}) => ({ key, layers, side: 'L', fx: 0.5, fy: 0.55,
 const tintScene = (c, o) => !c.tspin
   ? S('tint', [{ still: 'tint-light', alpha: 1 }, { still: 'tint-dark', alpha: c.tint }], { fx: 0.56, fy: 0.42, zoom: 1.5, ...o })
   : c.tview === 'top'
-    ? S('tint:top', [{ seq: 'ttop', t: 0, tint: c.tints }], { fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.9, keep: 0.36, ...o })
-    : S('tint:360', [{ seq: 'tspin', t: c.tangle, loop: true, tint: c.tints }], { fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.84, keep: 0.36, ...o });
+    ? S('tint:top', [{ seq: 'ttop', t: 0, tint: c.tints }], { fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.9, keep: 0.36, ...c.tfocus, ...o })
+    : S('tint:360', [{ seq: 'tspin', t: c.tangle, loop: true, tint: c.tints }], { fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.84, keep: 0.36, ...c.tfocus, ...o });
 
 export const KEYS = {
   hero: (p, c) => S('hero', [{ seq: 'hero', t: clamp01((p - 0.5) * 2) * 0.92 + c.idle }], { side: 'L', fx: 0.5, fy: 0.55, zoom: 1.02, over: 0.17 }),
@@ -26,7 +26,7 @@ export const KEYS = {
     ? S('finish:' + c.finish, [{ seq: 'spin', t: c.angle, loop: true, paint: c.paint }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.04, fit: 0.84, transition: 'wipe' })
     : S('finish:' + c.finish, [{ still: c.finish, alpha: 1 }], { side: 'L', fx: 0.5, fy: 0.5, zoom: 1.04, transition: 'wipe' }),
   tint: (p, c) => tintScene(c, { side: 'R' }),
-  layers: (p, c) => tintScene(c, { side: 'C', dim: 0.84 }),
+  layers: (p, c) => tintScene(c, { side: 'C', dim: 0.84, fk: 0 }),
   chipbare: p => S('chipbare', [{ seq: 'chipbare', t: clamp01(p * 1.05) }], { side: 'L', fx: 0.5, fy: 0.45 }),
   wrapglass: p => S('wrapglass', [{ seq: 'wrapglass', t: clamp01((p - 0.04) / 0.86) }], { side: 'R', fx: 0.5, fy: 0.45 }),
   stones: p => S('stones', [{ seq: 'stones', t: clamp01(p * 1.05) }], { side: 'L', fx: 0.5, fy: 0.45 }),

@@ -19,7 +19,7 @@ const params = new URLSearchParams(location.search);
 // live state the story reads on every scroll tick
 const ctx = { thermo: 1, tint: 0.64, finish: 'finish-gloss', idle: 0, get mobile() { return isMobile(); },
   spin: false, angle: 0, paint: FINISHES[0].paint,              // 360 view: on/off, turns (1 = full turn), live paint recipe
-  tspin: false, tangle: 0, tview: '360', tints: { key: '', rgb: new Float32Array(15).fill(1) } };   // tint car: on/off, turns, 360 or top view, film per glass
+  tspin: false, tangle: 0, tview: '360', tints: { key: '', rgb: new Float32Array(15).fill(1) }, tfocus: { fk: 0 } };   // tint car: on/off, turns, 360 or top view, film per glass
 let film = null;
 
 /* ---------------- preloader ---------------- */
@@ -63,6 +63,7 @@ const NEEDS = { hero: ['hero'], film: ['ppf'], impact: ['impact'], heal: ['heal'
 
 function onScroll() {
   const y = window.scrollY;
+  ctx.tfocus = tintFocus();
   const s = story.sample(y, ctx), sc = s.scene;
   story.steps.forEach((st, i) => st.el.classList.toggle('is-active', i === s.index && s.active));
   film?.set(sc); film?.setHidden(sc.dim > 0.985);
@@ -192,7 +193,18 @@ function createSpin({ pad, seq, on, get, set }) {
     if (!step) return;
     e.preventDefault(); stop(); spin.intro = 2; pad.classList.add('is-used'); setAngle(get() + step);
   });
-  return { setAngle, intro, stop };
+  function turnTo(a) {                                           // turn the short way round to angle a
+    stop(); spin.intro = 2;
+    const a0 = get(), a1 = a0 + ((((a - a0) % 1) + 1.5) % 1) - 0.5;
+    if (reducedMotion || Math.abs(a1 - a0) < 0.004) { setAngle(a1); return; }
+    const t0 = performance.now(), DUR = 500 + Math.abs(a1 - a0) * 1600;
+    const step = now => {
+      const t = Math.min(1, (now - t0) / DUR), e = t * t * (3 - 2 * t);
+      setAngle(a0 + (a1 - a0) * e); if (t < 1) spin.raf = requestAnimationFrame(step); else spin.raf = 0;
+    };
+    spin.raf = requestAnimationFrame(step);
+  }
+  return { setAngle, intro, stop, turnTo };
 }
 const studioSpin = createSpin({ pad: $('#spinPad'), seq: 'spin', on: () => ctx.spin, get: () => ctx.angle, set: a => { ctx.angle = a; } });
 const tintSpin = createSpin({ pad: $('#tspinPad'), seq: 'tspin', on: () => ctx.tspin && ctx.tview === '360', get: () => ctx.tangle, set: a => { ctx.tangle = a; } });
@@ -212,6 +224,22 @@ function tintGlide(jump) {                                       // the glass da
     onScroll(); if (far) tintRaf = requestAnimationFrame(step);
   };
   step(last);
+}
+// Picking a glass turns the car to where that glass is best seen and zooms onto it (the roof: the top view).
+const GLASS_VIEW = { w: 0.12, f: 0.04, r: 0.96, k: 0.78, o: 'top' };
+function tintFocus() {
+  if (!ctx.tspin || !sel.zoom || sel.glass === 'all') return { fk: 0 };      // no zoom until a glass is picked
+  const gi = GLASS.findIndex(g => g.id === sel.glass), top = ctx.tview === 'top', m = manifest.seqs[top ? 'ttop' : 'tspin'];
+  const n = m?.focus?.length || 0; if (!n) return { fk: 0 };
+  const f = top ? 0 : ((Math.round(ctx.tangle * n) % n) + n) % n, b = m.focus[f][gi];
+  return b ? { fk: 1, fcx: b[0], fcy: b[1], fw: b[2], fh: b[3] } : { fk: 0 };
+}
+function showGlass(id) {
+  if (!ctx.tspin || id === 'all') return;
+  const v = GLASS_VIEW[id];
+  if (v === 'top') { if (ctx.tview !== 'top') setTintView('top'); return; }
+  if (ctx.tview !== '360') setTintView('360');
+  tintSpin.turnTo(v);
 }
 function setTintView(v) {
   ctx.tview = v; tintSpin.stop();
@@ -241,7 +269,7 @@ function initTint() {
   for (const g of [...GLASS, { id: 'all', name: 'All glass' }]) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'gchip'; b.role = 'radio'; b.dataset.id = g.id;
     b.innerHTML = g.id === 'all' ? `<span>${g.name}</span>` : `<span>${g.name}</span><b></b>`;
-    b.onclick = () => { sel.glass = g.id; if (ctx.tspin && g.id === 'o' && ctx.tview !== 'top') setTintView('top'); applyTint(); };
+    b.onclick = () => { sel.glass = g.id; sel.zoom = true; showGlass(g.id); applyTint(); };
     tintUI.glass.append(b);
   }
   for (const t of TINTS) {

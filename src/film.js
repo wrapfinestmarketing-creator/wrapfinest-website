@@ -47,7 +47,8 @@ export function createFilm({ canvas, base, manifest, reducedMotion, painter, tin
   // ---------- state ----------
   let W = 2, H = 2, dpr = 1, dirty = true, running = false, hidden = false;
   let target = null, curKey = '', fade = 1, fadeMode = 'fade', px = 0, py = 0, tpx = 0, tpy = 0, last = 0;
-  const cur = { t: {}, alpha: {}, ax: 0.5, zoom: 1.06, fx: 0.5, fy: 0.5 };
+  const cur = { t: {}, alpha: {}, ax: 0.5, zoom: 1.06, fx: 0.5, fy: 0.5, fk: 0, fcx: 0.5, fcy: 0.5, fw: 1, fh: 1 };
+  const FOCUS = ['fk', 'fcx', 'fcy', 'fw', 'fh'];
 
   function resize() {
     const r = canvas.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 2 : 1.5);
@@ -57,20 +58,36 @@ export function createFilm({ canvas, base, manifest, reducedMotion, painter, tin
   resize(); window.addEventListener('resize', resize);
   window.addEventListener('pointermove', e => { tpx = (e.clientX / innerWidth) * 2 - 1; tpy = (e.clientY / innerHeight) * 2 - 1; }, { passive: true });
 
+  // Zoom onto a part of the picture (a window of the tint car): the box fcx, fcy, fw, fh (0..1 of the picture) grows
+  // to fill most of the room it has and moves to the middle of it; fk eases the zoom in and out.
+  function focus(r, roomW, roomH, cx, cy, [xa, xb], [ya, yb]) {
+    if (cur.fk < 0.002) return r;
+    const zt = clamp(Math.min((isMobile ? 0.78 : 0.62) * roomW / Math.max(cur.fw * r.w, 1), (isMobile ? 0.7 : 0.58) * roomH / Math.max(cur.fh * r.h, 1)), 1, isMobile ? 1.9 : 2.4);
+    const z = 1 + cur.fk * (zt - 1), w = r.w * z, h = r.h * z;
+    const fx = r.x + cur.fcx * r.w, fy = r.y + cur.fcy * r.h;            // where the box is now
+    const tx = fx + (cx - fx) * cur.fk, ty = fy + (cy - fy) * cur.fk;    // where it goes
+    let x = tx - cur.fcx * w, y = ty - cur.fcy * h;
+    if (w >= xb - xa) x = clamp(x, xb - w, xa);                           // no empty edges once the picture is big enough
+    if (h >= yb - ya) y = clamp(y, yb - h, ya);
+    return { x, y, w, h };
+  }
+
   function place(img) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     const fit = target?.fit;                                     // 360 view: this share of the picture's width must stay visible
     if (fit && isMobile) {
       const top = 58 * dpr, bandH = Math.min(W * 1.02, H * 0.56), s = W / (iw * fit), w = iw * s, h = ih * s;
       const y = h < bandH ? top + 6 * dpr : top;                 // sits high so the text card below never covers the wheels
-      return { x: W / 2 - cur.fx * w, y, w, h, band: Math.min(top + bandH, y + h), soft: true, clip: [0, top, W, bandH] };
+      const r = focus({ x: W / 2 - cur.fx * w, y, w, h }, W, bandH, W / 2, top + bandH / 2, [0, W], [top, top + bandH]);
+      return { ...r, band: Math.min(top + bandH, r.y + r.h), soft: true, clip: [0, top, W, bandH] };
     }
     if (fit) {
       const kp = target.keep ?? 0.25, l = target.side === 'L' ? kp : 0, r = target.side === 'R' ? kp : 0, room = W * (1 - l - r);   // the text panel keeps its share
       const s = Math.min(Math.max(W / iw, H / ih) * cur.zoom, room / (iw * fit)), w = iw * s, h = ih * s;
       const x = W * (l + (1 - l - r) / 2) - cur.fx * w - px * 10 * dpr;
       const y = h >= H ? clamp(0.52 * H - cur.fy * h - py * 6 * dpr, H - h, 0) : (H - h) * 0.5;
-      return { x, y, w, h, band: H, soft: h < H };
+      const f = focus({ x, y, w, h }, room, H, W * (l + (1 - l - r) / 2), H * 0.5, [W * l, W * (1 - r)], [0, H]);   // the picture must cover the room, not the text panel
+      return { ...f, band: H, soft: f.h < H - 1 };
     }
     if (isMobile) {                                              // picture band at the top, text below
       const top = 58 * dpr, bandH = Math.min(W * 1.02, H * 0.56), vis = 0.6 / cur.zoom;
@@ -116,7 +133,7 @@ export function createFilm({ canvas, base, manifest, reducedMotion, painter, tin
       if (L.seq) { const c = cur.t[L.seq] ?? L.t, n = c + (L.t - c) * (L.loop && !reducedMotion ? 1 - Math.exp(-dt * 16) : k); if (Math.abs(n - c) > 0.0004) moving = true; cur.t[L.seq] = Math.abs(L.t - n) < 0.0005 ? L.t : n; }
       else { const ta = L.alpha ?? 1, c = cur.alpha[L.still] ?? ta, n = c + (ta - c) * (reducedMotion ? 1 : 1 - Math.exp(-dt * 6)); if (Math.abs(n - c) > 0.002) moving = true; cur.alpha[L.still] = Math.abs(ta - n) < 0.003 ? ta : n; }
     }
-    for (const key of ['ax', 'zoom', 'fx', 'fy']) { const tv = target[key], n = cur[key] + (tv - cur[key]) * (reducedMotion ? 1 : 1 - Math.exp(-dt * 4)); if (Math.abs(n - cur[key]) > 0.0003) moving = true; cur[key] = n; }
+    for (const key of ['ax', 'zoom', 'fx', 'fy', ...FOCUS]) { const tv = target[key] ?? (key === 'fk' ? 0 : key === 'fw' || key === 'fh' ? 1 : 0.5), n = cur[key] + (tv - cur[key]) * (reducedMotion ? 1 : 1 - Math.exp(-dt * 4)); if (Math.abs(n - cur[key]) > 0.0003) moving = true; cur[key] = n; }
     const npx = px + (tpx - px) * (1 - Math.exp(-dt * 3)), npy = py + (tpy - py) * (1 - Math.exp(-dt * 3)); if (Math.abs(npx - px) + Math.abs(npy - py) > 0.0006) moving = true; px = npx; py = npy;
     if (fade < 1) { fade = Math.min(1, fade + dt / (fadeMode === 'wipe' ? 0.9 : 0.55)); moving = true; }
     if (!moving && !dirty) return; dirty = false;
@@ -148,6 +165,6 @@ export function createFilm({ canvas, base, manifest, reducedMotion, painter, tin
     setHidden(v) { hidden = v; },
     start() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(loop); } },
     /** Jump straight to the target (tests, reduced motion). */
-    snap() { if (!target) return; for (const L of target.layers) { if (L.seq) cur.t[L.seq] = L.t; else cur.alpha[L.still] = L.alpha ?? 1; } cur.ax = target.ax; cur.zoom = target.zoom; cur.fx = target.fx; cur.fy = target.fy; fade = 1; dirty = true; frame(0.016); },
+    snap() { if (!target) return; for (const L of target.layers) { if (L.seq) cur.t[L.seq] = L.t; else cur.alpha[L.still] = L.alpha ?? 1; } cur.ax = target.ax; cur.zoom = target.zoom; cur.fx = target.fx; cur.fy = target.fy; for (const k of FOCUS) if (target[k] != null) cur[k] = target[k]; fade = 1; dirty = true; frame(0.016); },
   };
 }
