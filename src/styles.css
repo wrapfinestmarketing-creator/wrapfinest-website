@@ -644,3 +644,5 @@ video.lb__media { cursor: default; background: #000; }
   .panel--tint > p:not(.chapter):not(.fine) { display: none; }
   .panel--tint .tint { margin-top: 14px; }
 }
+.form__privacy { margin-top: 10px; font-size: 0.74rem; color: var(--steel); }
+.form__privacy a, .footer__fine a { text-decoration: underline; text-underline-offset: 2px; }

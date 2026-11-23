@@ -8,6 +8,7 @@ import { createTinter } from './tint.js';
 import { initShop } from './shop.js';
 import { createLightbox } from './lightbox.js';
 import manifest from './film-manifest.json';
+import { track, sectionView, lead, sourceText } from './track.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -61,6 +62,8 @@ let lastChapter = '', lastIndex = -1;
 // which media the next step needs, so it is already loading before the visitor gets there
 const NEEDS = { hero: ['hero'], film: ['ppf'], impact: ['impact'], heal: ['heal'], pcu: ['outro'], rain: ['rain'], monsoon: ['rain'], studio: ['finish-gloss', 'finish-satin', 'finish-onyx'], tint: ['tint-light', 'tint-dark'], armor: ['tint-light', 'tint-dark'], layers: [], chipbare: ['chipbare'], wrapglass: ['wrapglass'], stones: ['stones'], roof: ['roof'], heat: ['heat-bare', 'heat-shield'], install: [], smash: ['smash'], accintro: ['kit-parts'], kitfront: ['kitfront'], kitrear: ['kitrear'], mats: ['mats'], shade: ['shade'], exit: ['shade'] };
 
+// sections reported to Meta (ViewContent) the first time a visitor reaches them
+const CHAPTER_NAMES = { ppf: 'Paint protection film', ceramic: 'Ceramic coating', finish: 'Finish Studio', tint: 'Nano ceramic tint', thermo: 'Thermoshield X', acc: 'Tesla accessories' };
 function onScroll() {
   const y = window.scrollY;
   for (const g of Object.values(glassCfg)) g.refocus();
@@ -84,6 +87,7 @@ function onScroll() {
   const ch = s.past ? '' : s.step.chapter;
   if (ch !== lastChapter) {
     lastChapter = ch;
+    sectionView(CHAPTER_NAMES[ch]);
     $$('[data-rail]').forEach(a => a.classList.toggle('is-current', a.dataset.rail === ch));
     $$('.nav__links a').forEach(a => a.classList.toggle('is-current', a.getAttribute('href') === '#' + ({ ppf: 'ppf', ceramic: 'ppf', finish: 'finish', tint: 'tint', thermo: 'thermo', acc: 'tesla' }[ch] || '_')));
   }
@@ -120,8 +124,8 @@ function applyFinish() {
   $$('.swatch', swEl).forEach(c => c.setAttribute('aria-checked', String(c.dataset.name === sel.swatch.name)));
   updateSelectionField(); onScroll();
 }
-FINISHES.forEach(f => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.role = 'radio'; b.dataset.id = f.id; b.textContent = f.label; b.setAttribute('aria-checked', 'false'); b.onclick = () => { sel.finish = f; if (f.swatches && !ctx.spin) film?.preload(SWATCHES.map(s => s.still)); applyFinish(); }; chipsEl.append(b); });
-SWATCHES.forEach(s => { const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch'; b.role = 'radio'; b.dataset.name = s.name; b.title = s.name; b.setAttribute('aria-label', s.name); b.style.setProperty('--c', s.color); b.onpointerenter = () => { if (!ctx.spin) film?.loadStill(s.still); }; b.onclick = () => { sel.swatch = s; applyFinish(); }; swEl.append(b); });
+FINISHES.forEach(f => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.role = 'radio'; b.dataset.id = f.id; b.textContent = f.label; b.setAttribute('aria-checked', 'false'); b.onclick = () => { sel.finish = f; if (f.swatches && !ctx.spin) film?.preload(SWATCHES.map(s => s.still)); applyFinish(); track('CustomizeProduct', { content_name: 'Finish Studio', content_ids: [f.id] }); }; chipsEl.append(b); });
+SWATCHES.forEach(s => { const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch'; b.role = 'radio'; b.dataset.name = s.name; b.title = s.name; b.setAttribute('aria-label', s.name); b.style.setProperty('--c', s.color); b.onpointerenter = () => { if (!ctx.spin) film?.loadStill(s.still); }; b.onclick = () => { sel.swatch = s; applyFinish(); track('CustomizeProduct', { content_name: 'Finish Studio', content_ids: [s.name] }); }; swEl.append(b); });
 $$('.chip', chipsEl)[0].setAttribute('aria-checked', 'true');
 $('#quoteFinish').addEventListener('click', () => prefillService(sel.finish.service));
 
@@ -288,7 +292,7 @@ function createGlassConfig({ step, films, start, label, mixed, simpleIntro, simp
       b.style.setProperty('--f', `rgb(${t.film.map(v => Math.round(40 + v * 200)).join(',')})`);
       b.setAttribute('aria-label', `${t.shade}, ${t.vlt}% VLT, ${t.name}`);
       b.innerHTML = `<i></i><b>${t.vlt}</b><span>${t.shade}</span>`;
-      b.onclick = () => { g.touched = true; for (const x of GLASS) if (g.glass === 'all' || g.glass === x.id) g.film[x.id] = t; apply(); };
+      b.onclick = () => { g.touched = true; for (const x of GLASS) if (g.glass === 'all' || g.glass === x.id) g.film[x.id] = t; apply(); track('CustomizeProduct', { content_name: label, content_ids: [t.id], content_category: g.glass === 'all' ? 'All glass' : GLASS.find(x => x.id === g.glass).name }); };
       ui.films.append(b);
     }
     $$('.chip', ui.views).forEach(b => { b.onclick = () => setView(b.dataset.view); });
@@ -366,11 +370,12 @@ function prefillService(name) { const c = $$('#quoteForm input[name="services"]'
     if (!ok) { status.classList.add('is-err'); status.textContent = 'Please fill in your name, mobile number and car.'; $('[aria-invalid="true"]', form)?.focus(); return; }
     if (form.elements._honey.value) return;
     const fd = new FormData(form), services = fd.getAll('services').join(', ') || 'Not specified';
-    const payload = { _subject: `Quote request: ${fd.get('vehicle')} (${fd.get('name')})`, _template: 'table', _captcha: 'false', Name: fd.get('name'), Mobile: fd.get('phone'), Email: fd.get('email') || '-', Vehicle: fd.get('vehicle'), Services: services, Selection: fd.get('selection') || '-', Accessories: shop?.summary().text || '-', Message: fd.get('message') || '-' };
+    const payload = { _subject: `Quote request: ${fd.get('vehicle')} (${fd.get('name')})`, _template: 'table', _captcha: 'false', Name: fd.get('name'), Mobile: fd.get('phone'), Email: fd.get('email') || '-', Vehicle: fd.get('vehicle'), Services: services, Selection: fd.get('selection') || '-', Accessories: shop?.summary().text || '-', Message: fd.get('message') || '-', 'Came from': sourceText() };
     const btn = $('button[type="submit"]', form); btn.disabled = true; btn.textContent = 'Sending…';
     try {
       const r = await fetch(CONTACT.formEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) });
       if (!r.ok) throw new Error(String(r.status));
+      lead({ name: fd.get('name'), phone: fd.get('phone'), email: fd.get('email'), services, vehicle: fd.get('vehicle') });
       status.classList.add('is-ok'); status.textContent = 'Request sent. We will reply during shop hours, 9AM to 6PM.'; form.reset(); updateSelectionField(); shop?.clear();
     } catch {
       status.classList.add('is-err');
@@ -393,7 +398,13 @@ $$('[data-lightbox]').forEach(g => {
 /* ---------------- accessories shop ---------------- */
 (() => {
   const box = $('#formCart'), list = $('#formCartList'), total = $('#formCartTotal'), copy = $('#formCartCopy');
+  let had = null;
   const render = sum => {
+    if (had && sum.count > had.length) {                         // an accessory was added to the list
+      const l = sum.lines.find(x => !had.some(h => h.id === x.id && h.model === x.model));
+      if (l) track('AddToCart', { content_name: l.label, content_ids: [l.id], content_type: 'product', value: l.price || 0, currency: 'PHP' });
+    }
+    had = sum.lines;
     box.hidden = !sum.count; list.innerHTML = '';
     for (const l of sum.lines) { const li = document.createElement('li'); li.innerHTML = `<span>${l.label}</span><b>${l.priceText}</b><button type="button" aria-label="Remove ${l.name}">×</button>`; li.querySelector('button').onclick = () => shop.remove(l.id, l.model); list.append(li); }
     total.textContent = sum.count ? `Estimated total ${sum.totalText}` : '';
@@ -407,6 +418,11 @@ $$('[data-lightbox]').forEach(g => {
   });
 })();
 $('#year').textContent = new Date().getFullYear();
+if ('IntersectionObserver' in window) {
+  const later = { work: 'Our work', voices: 'Reviews', pricing: 'Pricing', visit: 'Visit the shop', quote: 'Quote form' };
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { sectionView(later[e.target.id]); io.unobserve(e.target); } }), { threshold: 0.3 });
+  for (const id of Object.keys(later)) { const el = document.getElementById(id); if (el) io.observe(el); }
+}
 
 /* ---------------- boot ---------------- */
 async function boot() {

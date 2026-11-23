@@ -10,6 +10,12 @@ Scroll-driven cinematic site for WrapFinest (Bacolor, Pampanga): paint protectio
 - `src/tint.js` — the tint viewer: a 360 and a top view of the car with a film per glass, darkened live on the GPU; `tools/build-tint.py` builds the 360 frames (cut-out, glass matte, which window is which) from four quarter-turn clips, `tools/build-top.py` builds the top view, `tools/tintcheck.cjs` and `tools/zoomcheck.cjs` test it (SEC=armor tests the Thermoshield X configurator, which reuses the same viewer)
 - `src/paint.js` — the Finish Studio 360: one set of car frames, repainted live on the GPU for every finish; `tools/build-spin.py` builds those frames from four quarter-turn clips (`tools/repaint.py` is the reference maths), `tools/spincheck.cjs` tests it and `tools/paintshot.cjs` saves the repainted frames for review
 
+## Ad tracking
+
+- `src/track.js`: the Meta Pixel (dataset "WrapFinest Website", 1137726062348177, ad account 288888353). It sends PageView, ViewContent per section, CustomizeProduct (finish, tint and Thermoshield X choices), AddToCart (accessories), Contact (phone, Messenger, email taps) and Lead (quote form). It also keeps the ad or link a visitor came from (utm tags, fbclid) and adds it to the quote email as "Came from". Off on localhost unless `?track`; `?notrack` turns it off anywhere.
+- `functions/api/lead.js`: Cloudflare Pages Function that sends each quote request to Meta's Conversions API as well, with the same event id, so a lead counts even when the browser blocks the pixel. Needs the secret `META_CAPI_TOKEN` in Cloudflare Pages; `META_TEST_CODE` sends to Meta's Test events while testing.
+- `public/privacy.html`: privacy notice; `public/_headers`: cache rules on Cloudflare Pages; `tools/trackcheck.cjs` tests the events with Meta stubbed out.
+
 ## Develop
 
 ```bash
