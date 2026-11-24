@@ -8,7 +8,7 @@ const url = process.argv[2] || 'http://127.0.0.1:5173/';
   const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(e.message));
   let formBody = null, leadBody = null;
   await page.route('https://connect.facebook.net/**', r => r.abort());
-  await page.route('https://formsubmit.co/**', r => { formBody = JSON.parse(r.request().postData()); r.fulfill({ status: 200, contentType: 'application/json', body: '{"success":"true"}' }); });
+  await page.route('https://formsubmit.co/**', r => { formBody = JSON.parse(r.request().postData()); r.fulfill({ status: 200, contentType: 'application/json', body: process.env.FS_FAIL ? '{"success":"false","message":"This form needs Activation"}' : '{"success":"true"}' }); });
   await page.route('**/api/lead', r => { leadBody = JSON.parse(r.request().postData()); r.fulfill({ status: 200, body: 'ok' }); });
   await page.goto(url + '?nolenis&still&track&utm_source=facebook&utm_medium=paid&utm_campaign=tint-nov&utm_content=360-video&fbclid=TESTCLICK');
   await page.waitForFunction(() => document.body.classList.contains('is-ready'), null, { timeout: 180000 });

@@ -375,6 +375,8 @@ function prefillService(name) { const c = $$('#quoteForm input[name="services"]'
     try {
       const r = await fetch(CONTACT.formEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) });
       if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json().catch(() => ({}));                     // FormSubmit answers 200 with success "false" before the address is activated
+      if (String(j.success) === 'false') throw new Error(j.message || 'not sent');
       lead({ name: fd.get('name'), phone: fd.get('phone'), email: fd.get('email'), services, vehicle: fd.get('vehicle') });
       status.classList.add('is-ok'); status.textContent = 'Request sent. We will reply during shop hours, 9AM to 6PM.'; form.reset(); updateSelectionField(); shop?.clear();
     } catch {
