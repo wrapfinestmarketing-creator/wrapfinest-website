@@ -67,9 +67,9 @@ export const TINT_LAYERS = [
 export const CONTACT = {
   phone: '0998 564 0802',
   phoneHref: 'tel:+639985640802',
-  email: 'wrapfinestpampanga@gmail.com',
+  email: 'wfpampanga@gmail.com',
   messenger: 'https://m.me/wrapfinestpampanga',
   facebook: 'https://www.facebook.com/wrapfinestpampanga',
   map: 'https://maps.app.goo.gl/krx5VT7D8T2r8pCt9',
-  formEndpoint: 'https://formsubmit.co/ajax/wrapfinestpampanga@gmail.com',
+  formEndpoint: 'https://formsubmit.co/ajax/wfpampanga@gmail.com',
 };

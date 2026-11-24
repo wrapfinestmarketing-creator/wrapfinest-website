@@ -59,7 +59,7 @@ Philippine context everywhere: monsoon, acid rain, UV index 8–11, 60–70 °C 
 
 ### Business
 - **WrapFinest** — Blk 11 Lot 17, WrapFinest Building, Friendship Hiway, Brgy. Calibutbut, Bacolor, Pampanga
-- Phone / Viber: **0998 564 0802** · Email: **wrapfinestpampanga@gmail.com**
+- Phone / Viber: **0998 564 0802** · Email: **wfpampanga@gmail.com**
 - Open **every day, 9:00 AM – 6:00 PM**
 - Map: https://maps.app.goo.gl/krx5VT7D8T2r8pCt9 · Facebook / Messenger: facebook.com/wrapfinestpampanga
 - **Official Distributor of F1 Auto Films — Central Luzon** (f1autofilms.com)
@@ -141,7 +141,7 @@ Messaging: *WrapFinest's colored PPF and F1 Apex Ultra are made for Philippine w
 | 9 | **Clients Speak** | 4–5 short UGC testimony clips (10–20 s each, subtitled) as vertical cards. |
 | 10 | **Pricing** | Four "Starts at" cards; hover flips to "what's included / warranty". |
 | 11 | **The Studio** | Shop exterior + hex bay footage, address, hours, map button, Messenger, call. |
-| 12 | **Get a Quote** | Form: name, mobile, email, car make/model/year, services (multi), finish/tint shade (pre-filled from configurator/slider), preferred date, message. Sends to wrapfinestpampanga@gmail.com. Plus **Message us on Messenger** and **Call** buttons. |
+| 12 | **Get a Quote** | Form: name, mobile, email, car make/model/year, services (multi), finish/tint shade (pre-filled from configurator/slider), preferred date, message. Sends to wfpampanga@gmail.com. Plus **Message us on Messenger** and **Call** buttons. |
 | — | **Footer** | Logo, contact, F1 distributor badge, socials, © WrapFinest. |
 
 Persistent UI: minimal top bar (logo · chapters · **Get a Quote**), chapter progress rail on the right
@@ -156,7 +156,7 @@ Persistent UI: minimal top bar (logo · chapters · **Get a Quote**), chapter pr
 - **3D car:** Tesla Model YL, `.glb`, Draco/Meshopt compressed, target **≤ 8 MB**. No Tesla badge/logo on the model, and no copy implying Tesla endorsement. Separate meshes for body panels, windshield, roof glass, side glass, wheels so each chapter can target them.
 - **Effects:** custom shaders for film sheen, water beading, heat/IR visualisation, glass crack; particles for stones/debris/rain.
 - **Video:** compilation & UGC re-encoded (H.264 + WebM), 720p/1080p, short loops ≤ 6 MB each, lazy-loaded.
-- **Form:** FormSubmit.co → wrapfinestpampanga@gmail.com (owner clicks one confirmation email on first submission). Honeypot anti-spam.
+- **Form:** FormSubmit.co → wfpampanga@gmail.com (owner clicks one confirmation email on first submission). Honeypot anti-spam.
 - **Performance budget:** first meaningful paint < 2.5 s on 4G; total initial JS < 300 KB gz; 3D loads progressively behind the preloader.
 - **Mobile:** same story, lighter model/effects, gyro-driven light; 60 fps target on mid-range Android.
 - **Accessibility:** `prefers-reduced-motion` → static frames + short videos instead of scroll animation; keyboard-operable configurator and slider; real text (not images) for all specs; color contrast AA.
