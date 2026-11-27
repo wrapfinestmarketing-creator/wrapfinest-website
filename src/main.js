@@ -370,7 +370,7 @@ function prefillService(name) { const c = $$('#quoteForm input[name="services"]'
     if (!ok) { status.classList.add('is-err'); status.textContent = 'Please fill in your name, mobile number and car.'; $('[aria-invalid="true"]', form)?.focus(); return; }
     if (form.elements._honey.value) return;
     const fd = new FormData(form), services = fd.getAll('services').join(', ') || 'Not specified';
-    const payload = { _subject: `Quote request: ${fd.get('vehicle')} (${fd.get('name')})`, _template: 'table', _captcha: 'false', Name: fd.get('name'), Mobile: fd.get('phone'), Email: fd.get('email') || '-', Vehicle: fd.get('vehicle'), Services: services, Selection: fd.get('selection') || '-', Accessories: shop?.summary().text || '-', Message: fd.get('message') || '-', 'Came from': sourceText() };
+    const payload = { _subject: `Quote request: ${fd.get('vehicle')} (${fd.get('name')})`, _template: 'table', _captcha: 'false', Name: fd.get('name'), Mobile: fd.get('phone'), Email: fd.get('email') || '-', ...(fd.get('email') ? { _replyto: fd.get('email') } : {}), Vehicle: fd.get('vehicle'), Services: services, Selection: fd.get('selection') || '-', Accessories: shop?.summary().text || '-', Message: fd.get('message') || '-', 'Came from': sourceText() };
     const btn = $('button[type="submit"]', form); btn.disabled = true; btn.textContent = 'Sending…';
     try {
       const r = await fetch(CONTACT.formEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) });

@@ -26,9 +26,9 @@ export function track(name, data = {}, eventID) { fbq('track', name, data, event
 // The first ad or link that brought someone in the last 30 days is kept, and the latest one too.
 function readSource() { try { const s = JSON.parse(localStorage.getItem(SRC_KEY) || 'null'); return s && Date.now() - s.first.t < SRC_DAYS * 864e5 ? s : null; } catch { return null; } }
 function captureSource() {
-  const keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'ttclid'];
+  const keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'ttclid', 'via'];
   const hit = {}; for (const k of keys) if (params.get(k)) hit[k] = params.get(k).slice(0, 200);
-  let ref = ''; try { ref = document.referrer && new URL(document.referrer).hostname !== location.hostname ? new URL(document.referrer).hostname : ''; } catch { /* no referrer */ }
+  let ref = ''; try { ref = document.referrer && new URL(document.referrer).hostname !== location.hostname && !/github\.io$/.test(new URL(document.referrer).hostname) ? new URL(document.referrer).hostname : ''; } catch { /* no referrer */ }
   const now = { ...hit, ref, page: location.pathname + location.search.slice(0, 200), t: Date.now() };
   const s = readSource();
   const fresh = Object.keys(hit).length > 0 || !!ref;
@@ -39,8 +39,8 @@ function captureSource() {
 const source = captureSource();
 const describe = v => {
   if (!v) return '-';
-  const via = v.utm_source ? `${v.utm_source}${v.utm_medium ? ' / ' + v.utm_medium : ''}` : v.fbclid ? 'Facebook/Instagram ad' : v.gclid ? 'Google ad' : v.ttclid ? 'TikTok ad' : v.ref ? v.ref : 'direct visit';
-  const bits = [via, v.utm_campaign && `campaign: ${v.utm_campaign}`, v.utm_content && `ad: ${v.utm_content}`, v.utm_term && `term: ${v.utm_term}`, `on ${new Date(v.t).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`];
+  const via = v.utm_source ? `${v.utm_source}${v.utm_medium ? ' / ' + v.utm_medium : ''}` : v.fbclid ? 'Facebook/Instagram ad' : v.gclid ? 'Google ad' : v.ttclid ? 'TikTok ad' : v.ref ? v.ref : v.via ? 'old link' : 'direct visit';
+  const bits = [via, v.utm_campaign && `campaign: ${v.utm_campaign}`, v.utm_content && `ad: ${v.utm_content}`, v.utm_term && `term: ${v.utm_term}`, v.via === 'old-link' && (v.utm_source || v.fbclid || v.gclid || v.ttclid || v.ref) && 'via old github.io link', `on ${new Date(v.t).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`];
   return bits.filter(Boolean).join(' · ');
 };
 /** Readable ad source for the quote email: the first and (when different) the latest. */
